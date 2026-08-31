@@ -2,7 +2,13 @@
 
 > AI-powered return-abuse detection and risk-management platform for e-commerce merchants.
 
-RiskGuard AI is an end-to-end machine-learning system that identifies suspicious return behavior, quantifies risk, routes cases to the appropriate business action, and supports human analysts during investigation. It is not just a classifier — it is an operational risk-management workflow, from raw return data to a resolved analyst decision.
+RiskGuard AI is an end-to-end machine-learning system that identifies suspicious
+return behavior, quantifies risk, routes cases to the appropriate business
+action, and supports human analysts during investigation.
+
+It combines machine-learning risk prediction, explainable risk signals,
+network analysis, business decisioning, and human-in-the-loop review into a
+single operational workflow.
 
 **Core pipeline:**
 
