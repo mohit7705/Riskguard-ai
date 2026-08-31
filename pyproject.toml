@@ -1,0 +1,34 @@
+[project]
+name = "riskguard-ai"
+version = "0.1.0"
+description = "AI-powered return risk manager for merchants"
+readme = "README.md"
+requires-python = "==3.10.20"
+dependencies = [
+    "catboost==1.2.10",
+    "faker==40.37.0",
+    "fastapi==0.141.1",
+    "google-genai==2.19.0",
+    "httpx==0.28.1",
+    "joblib>=1.5.3",
+    "lightgbm==4.7.0",
+    "matplotlib==3.10.9",
+    "numpy==2.2.6",
+    "pandas==2.3.3",
+    "plotly==6.9.0",
+    "psycopg[binary]==3.3.4",
+    "pyarrow>=25.0.1",
+    "pydantic==2.13.4",
+    "pydantic-settings==2.15.0",
+    "python-dotenv==1.2.3",
+    "scikit-learn==1.7.2",
+    "shap==0.49.1",
+    "sqlalchemy==2.0.52",
+    "uvicorn[standard]==0.52.4",
+    "xgboost==3.2.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
