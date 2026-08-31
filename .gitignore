@@ -21,3 +21,9 @@ frontend/dist/
 
 # Logs
 *.log
+
+.env
+.neon
+.agents/
+.claude/
+skills-lock.json
