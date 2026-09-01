@@ -2508,3 +2508,198 @@ select.field-input {
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================================================
+   REVIEW DETAIL — TABS
+   ========================================================= */
+
+.review-detail-created {
+  display: block;
+
+  margin-top: 6px;
+
+  color: var(--text-muted);
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.detail-tabs {
+  display: flex;
+  gap: 4px;
+
+  margin-bottom: 20px;
+
+  border-bottom: 1px solid var(--border);
+}
+
+.detail-tabs button {
+  padding: 10px 16px;
+
+  border: none;
+  border-bottom: 2px solid transparent;
+
+  background: transparent;
+
+  color: var(--text-muted);
+
+  font-size: 13.5px;
+  font-weight: 700;
+
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.detail-tabs button:hover {
+  color: var(--text);
+}
+
+.detail-tabs button.active {
+  color: var(--navy);
+  border-bottom-color: var(--navy);
+}
+
+/* =========================================================
+   TRANSACTION / CUSTOMER INFO GRID
+   ========================================================= */
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  gap: 10px;
+
+  margin-bottom: 22px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 12px 14px;
+
+  border: 1px solid var(--border);
+  border-radius: 10px;
+
+  background: var(--surface-soft);
+}
+
+.info-row span {
+  color: var(--text-muted);
+
+  font-size: 13px;
+}
+
+.info-row strong {
+  color: var(--text);
+
+  font-size: 13.5px;
+  font-weight: 700;
+
+  text-align: right;
+
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================
+   HISTORY TIMELINE
+   ========================================================= */
+
+.case-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  margin-bottom: 22px;
+}
+
+.timeline-item {
+  display: flex;
+  gap: 14px;
+
+  padding-bottom: 20px;
+
+  position: relative;
+}
+
+.timeline-item:not(:last-child)::before {
+  content: '';
+
+  position: absolute;
+  left: 14px;
+  top: 30px;
+  bottom: 0;
+
+  width: 1px;
+
+  background: var(--border);
+}
+
+.timeline-icon {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+
+  display: grid;
+  place-items: center;
+
+  border-radius: 50%;
+
+  z-index: 1;
+}
+
+.timeline-icon.opened {
+  background: #e9f0fb;
+  color: #2b5fb0;
+}
+
+.timeline-icon.pending {
+  background: var(--amber-bg);
+  color: var(--amber);
+}
+
+.timeline-icon.allowed {
+  background: var(--green-bg);
+  color: var(--green);
+}
+
+.timeline-icon.blocked {
+  background: var(--red-bg);
+  color: var(--red);
+}
+
+.timeline-item strong {
+  display: block;
+
+  color: var(--text);
+
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.timeline-item span {
+  display: block;
+
+  margin-top: 2px;
+
+  color: var(--text-muted);
+
+  font-size: 12px;
+}
+
+.timeline-item p {
+  margin: 6px 0 0;
+
+  color: var(--text-soft);
+
+  font-size: 13px;
+  line-height: 1.5;
+}

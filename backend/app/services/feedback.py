@@ -12,8 +12,10 @@ def save_prediction_feedback(
     db: Session,
     prediction: dict[str, Any],
     data: dict[str, Any],
+    assessment_id: str | None = None,
 ) -> RiskFeedback:
     feedback = RiskFeedback(
+        assessment_id=assessment_id,
         case_id=prediction.get("review_case_id"),
         prediction=prediction["prediction"],
         predicted_label=prediction["predicted_label"],

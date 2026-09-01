@@ -11,6 +11,7 @@ class RiskPredictionRequest(BaseModel):
         min_length=1,
         description="Return and user feature data to evaluate.",
     )
+    assessment_id: str | None = None
 
 
 class BatchRiskPredictionRequest(BaseModel):
@@ -19,6 +20,7 @@ class BatchRiskPredictionRequest(BaseModel):
         min_length=1,
         description="Multiple return and user feature records to evaluate.",
     )
+    assessment_id: str | None = None
 
 
 class RiskSignal(BaseModel):
@@ -29,6 +31,7 @@ class RiskSignal(BaseModel):
 
 
 class RiskPredictionResult(BaseModel):
+    assessment_id: str | None = None
     predicted_label: int
     prediction: str
     abuse_probability: float

@@ -26,6 +26,7 @@ from backend.app.services.feedback import (
     update_feedback_decision,
     record_actual_outcome,
 )
+from backend.app.services.assessment import create_assessment, get_assessment
 from backend.app.services.monitoring import (
     get_feedback_records,
     get_feedback_record,
@@ -81,7 +82,31 @@ def predict_risk(
 ) -> RiskPredictionResponse:
 
     try:
+        if request.assessment_id:
+            assessment = get_assessment(
+                db=db,
+                assessment_id=request.assessment_id,
+            )
+
+            if assessment is None:
+                raise ValueError(
+                    f"Assessment not found: {request.assessment_id}"
+                )
+
+            assessment_id = assessment.assessment_id
+
+        else:
+            assessment = create_assessment(
+                db=db,
+                assessment_type="SINGLE",
+                total_records=1,
+            )
+
+            assessment_id = assessment.assessment_id
+
         result = predictor.predict(request.data)
+
+        result["assessment_id"] = assessment_id
 
         decision = make_risk_decision(result)
         result.update(decision)
@@ -96,6 +121,7 @@ def predict_risk(
             db=db,
             prediction=result,
             data=request.data,
+            assessment_id=assessment_id,
         )
 
         return RiskPredictionResponse(
@@ -130,8 +156,32 @@ def predict_risk_batch(
     results = []
 
     try:
+        if request.assessment_id:
+            assessment = get_assessment(
+                db=db,
+                assessment_id=request.assessment_id,
+            )
+
+            if assessment is None:
+                raise ValueError(
+                    f"Assessment not found: {request.assessment_id}"
+                )
+
+            assessment_id = assessment.assessment_id
+
+        else:
+            assessment = create_assessment(
+                db=db,
+                assessment_type="BATCH",
+                total_records=len(request.data),
+            )
+
+            assessment_id = assessment.assessment_id
+
         for data in request.data:
             prediction = predictor.predict(data)
+
+            prediction["assessment_id"] = assessment_id
 
             decision = make_risk_decision(prediction)
             prediction.update(decision)
@@ -146,6 +196,7 @@ def predict_risk_batch(
                 db=db,
                 prediction=prediction,
                 data=data,
+                assessment_id=assessment_id,
             )
 
             results.append(prediction)

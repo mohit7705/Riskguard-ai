@@ -1,4 +1,5 @@
 export type RiskResult = {
+  assessment_id: string | null
   predicted_label: number
   prediction: 'LEGITIMATE' | 'ABUSIVE'
   abuse_probability: number
