@@ -14,9 +14,18 @@ export type RiskDistribution = {
 
 export type DecisionTrend = {
   date: string
+  total: number
   allow: number
   block: number
   review: number
+}
+
+export type DailyReportData = {
+  date: string
+  total: number
+  allowed: number
+  review: number
+  blocked: number
 }
 
 
@@ -78,6 +87,7 @@ export type ReportDashboardResponse = {
   summary: ReportSummary
   risk_distribution: RiskDistribution
   decision_trend: DecisionTrend[]
+  daily_data: DailyReportData[]
   top_risk_reasons: RiskReason[]
   model_performance?: ModelPerformance
   threshold_curve?: ThresholdCurve

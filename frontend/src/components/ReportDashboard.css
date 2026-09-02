@@ -916,3 +916,265 @@
   font-size: 12.5px;
   line-height: 1.5;
 }
+/* =========================================================
+   LIVE MONITORING
+   ========================================================= */
+
+.monitoring-section {
+  margin-bottom: 24px;
+}
+
+.monitoring-refresh-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+
+  height: 34px;
+  padding: 0 12px;
+
+  border: 1px solid var(--border);
+  border-radius: 8px;
+
+  background: var(--surface);
+  color: var(--text);
+
+  font-size: 12px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.monitoring-refresh-button:hover:not(:disabled) {
+  background: #f7f9fc;
+  border-color: #cbd3df;
+  transform: translateY(-1px);
+}
+
+.monitoring-refresh-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.monitoring-refresh-button .spin {
+  animation: monitoring-spin 0.9s linear infinite;
+}
+
+@keyframes monitoring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.monitoring-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+
+  padding: 22px;
+
+  box-shadow: var(--shadow);
+}
+
+.monitoring-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  margin-bottom: 20px;
+}
+
+.monitoring-status-icon {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+
+  display: grid;
+  place-items: center;
+
+  border-radius: 10px;
+
+  background: #e9f0fb;
+  color: #2b5fb0;
+}
+
+.monitoring-status div:last-child {
+  min-width: 0;
+}
+
+.monitoring-status strong {
+  display: block;
+
+  color: var(--text);
+
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.monitoring-status span {
+  display: block;
+
+  margin-top: 3px;
+
+  color: var(--text-muted);
+
+  font-size: 12px;
+}
+
+.monitoring-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+
+  gap: 12px;
+
+  margin-bottom: 16px;
+}
+
+.monitoring-metric {
+  min-width: 0;
+
+  padding: 15px;
+
+  border: 1px solid var(--border);
+  border-radius: 10px;
+
+  background: #fbfcfe;
+}
+
+.monitoring-metric svg {
+  display: block;
+
+  margin-bottom: 9px;
+
+  color: #68788e;
+}
+
+.monitoring-metric span {
+  display: block;
+
+  color: var(--text-muted);
+
+  font-size: 11.5px;
+  font-weight: 600;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.monitoring-metric strong {
+  display: block;
+
+  margin-top: 6px;
+
+  color: var(--text);
+
+  font-size: 19px;
+  font-weight: 800;
+
+  line-height: 1;
+}
+
+.monitoring-outcomes {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+
+  gap: 10px;
+
+  padding-top: 16px;
+
+  border-top: 1px solid var(--border);
+}
+
+.monitoring-outcomes > div {
+  min-width: 0;
+
+  padding: 11px 13px;
+
+  border-radius: 9px;
+
+  background: #f7f9fc;
+}
+
+.monitoring-outcomes span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+
+  color: var(--text-muted);
+
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.monitoring-outcomes strong {
+  display: block;
+
+  margin-top: 5px;
+
+  color: var(--text);
+
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.monitoring-note {
+  margin: 16px 0 0;
+  padding: 11px 13px;
+
+  border-left: 3px solid #d9a441;
+
+  background: #fffaf0;
+  color: var(--text-muted);
+
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.monitoring-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  margin-bottom: 12px;
+  padding: 11px 13px;
+
+  border: 1px solid #f1c4c4;
+  border-radius: 9px;
+
+  background: var(--red-bg);
+  color: var(--red);
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ---------- Live monitoring responsive ---------- */
+
+@media (max-width: 1200px) {
+  .monitoring-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .monitoring-outcomes {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .monitoring-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .monitoring-outcomes {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .monitoring-card {
+    padding: 16px;
+  }
+}

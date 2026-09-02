@@ -18,85 +18,122 @@ from sklearn.metrics import (
     recall_score,
     f1_score,
 )
-from sklearn.model_selection import train_test_split
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 DATA_DIR = PROJECT_ROOT / "data" / "processed"
 MODEL_DIR = PROJECT_ROOT / "backend" / "ml" / "models"
+
 EVALUATION_REPORT_PATH = (
     MODEL_DIR / "model_evaluation_report.json"
 )
 
 TRAIN_PATH = DATA_DIR / "train.parquet"
+VALIDATION_PATH = DATA_DIR / "validation.parquet"
 TEST_PATH = DATA_DIR / "test.parquet"
 
 MODEL_PATH = MODEL_DIR / "riskguard_random_forest.joblib"
+
 XGB_MODEL_PATH = (
     MODEL_DIR / "riskguard_xgboost.joblib"
 )
+
 FEATURE_IMPORTANCE_PATH = (
     MODEL_DIR / "riskguard_feature_importance.parquet"
 )
 
+XGB_FEATURE_IMPORTANCE_PATH = (
+    MODEL_DIR / "xgboost_feature_importance.parquet"
+)
 
 TARGET_COLUMN = "abuse_label"
 
+RANDOM_STATE = 42
 
-def load_datasets() -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Load the prepared train and test datasets."""
 
-    if not TRAIN_PATH.exists():
-        raise FileNotFoundError(
-            f"Training dataset not found: {TRAIN_PATH}"
-        )
+# ============================================================
+# Dataset loading
+# ============================================================
 
-    if not TEST_PATH.exists():
-        raise FileNotFoundError(
-            f"Test dataset not found: {TEST_PATH}"
-        )
+def load_datasets() -> tuple[
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+]:
+    """Load train, validation and untouched test datasets."""
+
+    required_paths = {
+        "training": TRAIN_PATH,
+        "validation": VALIDATION_PATH,
+        "test": TEST_PATH,
+    }
+
+    for name, path in required_paths.items():
+        if not path.exists():
+            raise FileNotFoundError(
+                f"{name.capitalize()} dataset not found: {path}"
+            )
 
     train = pd.read_parquet(TRAIN_PATH)
+    validation = pd.read_parquet(VALIDATION_PATH)
     test = pd.read_parquet(TEST_PATH)
 
-    print(f"       Train dataset: {train.shape}")
-    print(f"       Test dataset:  {test.shape}")
+    print(f"       Train dataset:      {train.shape}")
+    print(f"       Validation dataset: {validation.shape}")
+    print(f"       Test dataset:       {test.shape}")
 
-    return train, test
+    return train, validation, test
 
+
+# ============================================================
+# Dataset validation
+# ============================================================
 
 def validate_datasets(
     train: pd.DataFrame,
+    validation: pd.DataFrame,
     test: pd.DataFrame,
 ) -> None:
-    """Validate the training inputs before model fitting."""
+    """Validate all datasets before model fitting."""
 
-    if TARGET_COLUMN not in train.columns:
-        raise RuntimeError(
-            f"Missing target column in train dataset: "
-            f"{TARGET_COLUMN}"
+    datasets = {
+        "train": train,
+        "validation": validation,
+        "test": test,
+    }
+
+    for name, dataframe in datasets.items():
+
+        if TARGET_COLUMN not in dataframe.columns:
+            raise RuntimeError(
+                f"Missing target column in {name}: "
+                f"{TARGET_COLUMN}"
+            )
+
+        if dataframe.isna().any().any():
+            raise RuntimeError(
+                f"{name.capitalize()} dataset contains NULL values."
+            )
+
+        labels = set(
+            dataframe[TARGET_COLUMN].unique()
         )
 
-    if TARGET_COLUMN not in test.columns:
-        raise RuntimeError(
-            f"Missing target column in test dataset: "
-            f"{TARGET_COLUMN}"
-        )
-
-    if train.isna().any().any():
-        raise RuntimeError(
-            "Training dataset contains NULL values."
-        )
-
-    if test.isna().any().any():
-        raise RuntimeError(
-            "Test dataset contains NULL values."
-        )
+        if labels != {0, 1}:
+            raise RuntimeError(
+                f"Unexpected {name} labels: {labels}"
+            )
 
     train_features = [
         column
         for column in train.columns
+        if column != TARGET_COLUMN
+    ]
+
+    validation_features = [
+        column
+        for column in validation.columns
         if column != TARGET_COLUMN
     ]
 
@@ -106,31 +143,30 @@ def validate_datasets(
         if column != TARGET_COLUMN
     ]
 
+    if train_features != validation_features:
+        raise RuntimeError(
+            "Train/validation feature columns do not match."
+        )
+
     if train_features != test_features:
         raise RuntimeError(
             "Train/test feature columns do not match."
         )
 
-    train_labels = set(train[TARGET_COLUMN].unique())
-    test_labels = set(test[TARGET_COLUMN].unique())
-
-    if train_labels != {0, 1}:
-        raise RuntimeError(
-            f"Unexpected train labels: {train_labels}"
-        )
-
-    if test_labels != {0, 1}:
-        raise RuntimeError(
-            f"Unexpected test labels: {test_labels}"
-        )
-
     print("       Dataset validation: PASSED")
 
 
+# ============================================================
+# Feature preparation
+# ============================================================
+
 def prepare_features(
     train: pd.DataFrame,
+    validation: pd.DataFrame,
     test: pd.DataFrame,
 ) -> tuple[
+    pd.DataFrame,
+    pd.Series,
     pd.DataFrame,
     pd.Series,
     pd.DataFrame,
@@ -138,13 +174,12 @@ def prepare_features(
     list[str],
 ]:
     """
-    Prepare model-ready features.
+    Prepare model features.
 
-    Numeric features are kept as-is.
-    Boolean features are converted to integers.
-    Categorical features are one-hot encoded using the
-    combined train/test feature space.
-    Identifier columns are excluded.
+    Categorical encoding is learned from TRAIN only.
+
+    Validation and test datasets are then aligned to the
+    training feature space.
     """
 
     excluded_columns = {
@@ -161,9 +196,11 @@ def prepare_features(
     ]
 
     X_train = train[feature_columns].copy()
+    X_validation = validation[feature_columns].copy()
     X_test = test[feature_columns].copy()
 
     y_train = train[TARGET_COLUMN].astype(int)
+    y_validation = validation[TARGET_COLUMN].astype(int)
     y_test = test[TARGET_COLUMN].astype(int)
 
     # ----------------------------------------------------------
@@ -171,39 +208,55 @@ def prepare_features(
     # ----------------------------------------------------------
 
     for column in feature_columns:
+
         if pd.api.types.is_datetime64_any_dtype(
             X_train[column]
         ):
-            X_train[column] = (
-                pd.to_datetime(X_train[column])
-                .astype("int64")
-                // 10**9
-            )
 
-            X_test[column] = (
-                pd.to_datetime(X_test[column])
-                .astype("int64")
-                // 10**9
-            )
+            for dataframe in (
+                X_train,
+                X_validation,
+                X_test,
+            ):
+                dataframe[column] = (
+                    pd.to_datetime(dataframe[column])
+                    .astype("int64")
+                    // 10**9
+                )
 
     # ----------------------------------------------------------
     # Convert boolean columns
     # ----------------------------------------------------------
 
     for column in feature_columns:
-        if pd.api.types.is_bool_dtype(X_train[column]):
-            X_train[column] = X_train[column].astype(int)
-            X_test[column] = X_test[column].astype(int)
+
+        if pd.api.types.is_bool_dtype(
+            X_train[column]
+        ):
+
+            X_train[column] = (
+                X_train[column].astype(int)
+            )
+
+            X_validation[column] = (
+                X_validation[column].astype(int)
+            )
+
+            X_test[column] = (
+                X_test[column].astype(int)
+            )
 
     # ----------------------------------------------------------
-    # Identify categorical columns
+    # Identify categorical columns from TRAIN
     # ----------------------------------------------------------
 
     categorical_columns = [
         column
         for column in feature_columns
         if (
-            pd.api.types.is_object_dtype(X_train[column])
+            pd.api.types.is_object_dtype(
+                X_train[column]
+            )
             or pd.api.types.is_categorical_dtype(
                 X_train[column]
             )
@@ -211,67 +264,84 @@ def prepare_features(
     ]
 
     if categorical_columns:
+
         print(
             "       Categorical features:",
             categorical_columns,
         )
 
-        # Combine train and test ONLY for consistent
-        # one-hot column creation.
-        combined = pd.concat(
-            [
-                X_train,
-                X_test,
-            ],
-            axis=0,
-            ignore_index=True,
-        )
+        # IMPORTANT:
+        # Each dataset is encoded independently.
+        # No test/validation categories are used to construct
+        # the training feature vocabulary.
 
-        train_length = len(X_train)
-
-        combined = pd.get_dummies(
-            combined,
+        X_train = pd.get_dummies(
+            X_train,
             columns=categorical_columns,
             dtype=int,
         )
 
-        X_train = combined.iloc[
-            :train_length
-        ].copy()
+        X_validation = pd.get_dummies(
+            X_validation,
+            columns=categorical_columns,
+            dtype=int,
+        )
 
-        X_test = combined.iloc[
-            train_length:
-        ].copy()
+        X_test = pd.get_dummies(
+            X_test,
+            columns=categorical_columns,
+            dtype=int,
+        )
+
+    # ----------------------------------------------------------
+    # Align validation/test to TRAIN feature space
+    # ----------------------------------------------------------
+
+    final_feature_columns = X_train.columns.tolist()
+
+    X_validation = X_validation.reindex(
+        columns=final_feature_columns,
+        fill_value=0,
+    )
+
+    X_test = X_test.reindex(
+        columns=final_feature_columns,
+        fill_value=0,
+    )
 
     # ----------------------------------------------------------
     # Final numeric validation
     # ----------------------------------------------------------
 
-    non_numeric = [
-        column
-        for column in X_train.columns
-        if not pd.api.types.is_numeric_dtype(
-            X_train[column]
-        )
-    ]
+    for name, dataframe in {
+        "training": X_train,
+        "validation": X_validation,
+        "test": X_test,
+    }.items():
 
-    if non_numeric:
+        non_numeric = [
+            column
+            for column in dataframe.columns
+            if not pd.api.types.is_numeric_dtype(
+                dataframe[column]
+            )
+        ]
+
+        if non_numeric:
+            raise RuntimeError(
+                f"Non-numeric {name} features found: "
+                f"{non_numeric}"
+            )
+
+        if dataframe.isna().any().any():
+            raise RuntimeError(
+                f"NULL values found in {name} features."
+            )
+
+    if X_train.shape[1] != X_validation.shape[1]:
         raise RuntimeError(
-            "Non-numeric model features found: "
-            f"{non_numeric}"
+            "Train/validation feature dimensions do not match."
         )
-
-    if X_train.isna().any().any():
-        raise RuntimeError(
-            "NULL values found in training features."
-        )
-
-    if X_test.isna().any().any():
-        raise RuntimeError(
-            "NULL values found in test features."
-        )
-
-    final_feature_columns = X_train.columns.tolist()
 
     if X_train.shape[1] != X_test.shape[1]:
         raise RuntimeError(
@@ -288,16 +358,24 @@ def prepare_features(
         f"{len(final_feature_columns)}"
     )
 
-    print("       Feature preparation: PASSED")
+    print(
+        "       Train-only feature encoding: PASSED"
+    )
 
     return (
         X_train,
         y_train,
+        X_validation,
+        y_validation,
         X_test,
         y_test,
         final_feature_columns,
     )
 
+
+# ============================================================
+# Model training
+# ============================================================
 
 def train_model(
     X_train: pd.DataFrame,
@@ -310,11 +388,14 @@ def train_model(
         max_depth=12,
         min_samples_leaf=2,
         class_weight="balanced",
-        random_state=42,
+        random_state=RANDOM_STATE,
         n_jobs=-1,
     )
 
-    model.fit(X_train, y_train)
+    model.fit(
+        X_train,
+        y_train,
+    )
 
     return model
 
@@ -332,7 +413,7 @@ def train_xgboost(
         subsample=0.8,
         colsample_bytree=0.8,
         scale_pos_weight=4,
-        random_state=42,
+        random_state=RANDOM_STATE,
         n_jobs=-1,
         eval_metric="logloss",
     )
@@ -345,25 +426,38 @@ def train_xgboost(
     return model
 
 
+# ============================================================
+# Evaluation
+# ============================================================
+
 def evaluate_model(
     model,
-    X_test: pd.DataFrame,
-    y_test: pd.Series,
+    X_data: pd.DataFrame,
+    y_data: pd.Series,
     model_name: str,
+    threshold: float = 0.5,
 ) -> dict:
-    """Evaluate model performance."""
+    """Evaluate a model at a locked probability threshold."""
 
-    predictions = model.predict(X_test)
     probabilities = (
-        model.predict_proba(X_test)[:, 1]
+        model.predict_proba(X_data)[:, 1]
     )
+
+    predictions = (
+        probabilities >= threshold
+    ).astype(int)
 
     metrics = {
         "model": model_name,
 
+        "threshold": round(
+            threshold,
+            4,
+        ),
+
         "accuracy": round(
             accuracy_score(
-                y_test,
+                y_data,
                 predictions,
             ),
             4,
@@ -371,31 +465,34 @@ def evaluate_model(
 
         "precision": round(
             precision_score(
-                y_test,
+                y_data,
                 predictions,
+                zero_division=0,
             ),
             4,
         ),
 
         "recall": round(
             recall_score(
-                y_test,
+                y_data,
                 predictions,
+                zero_division=0,
             ),
             4,
         ),
 
         "f1_score": round(
             f1_score(
-                y_test,
+                y_data,
                 predictions,
+                zero_division=0,
             ),
             4,
         ),
 
         "roc_auc": round(
             roc_auc_score(
-                y_test,
+                y_data,
                 probabilities,
             ),
             4,
@@ -403,7 +500,7 @@ def evaluate_model(
 
         "pr_auc": round(
             average_precision_score(
-                y_test,
+                y_data,
                 probabilities,
             ),
             4,
@@ -411,7 +508,7 @@ def evaluate_model(
 
         "confusion_matrix": (
             confusion_matrix(
-                y_test,
+                y_data,
                 predictions,
             )
             .tolist()
@@ -431,24 +528,29 @@ def evaluate_model(
 
     print(
         classification_report(
-            y_test,
+            y_data,
             predictions,
             target_names=[
                 "LEGITIMATE",
                 "ABUSIVE",
             ],
             digits=4,
+            zero_division=0,
         )
     )
 
     return metrics
 
 
+# ============================================================
+# Model saving
+# ============================================================
+
 def save_model(
     model: RandomForestClassifier,
     feature_columns: list[str],
 ) -> None:
-    """Save model and feature metadata."""
+    """Save Random Forest model and metadata."""
 
     MODEL_DIR.mkdir(
         parents=True,
@@ -461,7 +563,7 @@ def save_model(
             "feature_columns": feature_columns,
             "target_column": TARGET_COLUMN,
             "model_type": "RandomForestClassifier",
-            "random_state": 42,
+            "random_state": RANDOM_STATE,
         },
         MODEL_PATH,
     )
@@ -503,7 +605,7 @@ def save_xgboost_model(
     model: XGBClassifier,
     feature_columns: list[str],
 ) -> None:
-    """Save XGBoost model and feature metadata."""
+    """Save XGBoost model and metadata."""
 
     MODEL_DIR.mkdir(
         parents=True,
@@ -516,7 +618,7 @@ def save_xgboost_model(
             "feature_columns": feature_columns,
             "target_column": TARGET_COLUMN,
             "model_type": "XGBClassifier",
-            "random_state": 42,
+            "random_state": RANDOM_STATE,
         },
         XGB_MODEL_PATH,
     )
@@ -532,7 +634,7 @@ def save_xgboost_model(
     )
 
     importance.to_parquet(
-        MODEL_DIR / "xgboost_feature_importance.parquet",
+        XGB_FEATURE_IMPORTANCE_PATH,
         index=False,
     )
 
@@ -551,13 +653,26 @@ def save_xgboost_model(
     )
 
 
+# ============================================================
+# Evaluation report
+# ============================================================
+
 def save_evaluation_report(
     rf_metrics: dict,
     xgb_metrics: dict,
 ) -> None:
-    """Save model comparison metrics."""
+    """Save final model comparison metrics."""
 
     report = {
+        "evaluation_protocol": {
+            "train_rows": 6400,
+            "validation_rows": 1600,
+            "test_rows": 2000,
+            "test_usage": (
+                "Final evaluation only. "
+                "Not used for threshold selection."
+            ),
+        },
         "random_forest": rf_metrics,
         "xgboost": xgb_metrics,
     }
@@ -583,37 +698,50 @@ def save_evaluation_report(
     print(EVALUATION_REPORT_PATH)
 
 
+# ============================================================
+# Main
+# ============================================================
+
 def main() -> None:
+
     print("=" * 60)
-    print("RiskGuard AI — Baseline Model Training")
+    print("RiskGuard AI — ML Training")
     print("=" * 60)
 
     print()
-    print("[1/5] Loading training datasets...")
+    print("[1/6] Loading datasets...")
 
-    train, test = load_datasets()
+    train, validation, test = load_datasets()
 
     print()
-    print("[2/5] Validating datasets...")
+    print("[2/6] Validating datasets...")
 
     validate_datasets(
         train,
+        validation,
         test,
     )
 
     print()
-    print("[3/5] Preparing model features...")
+    print("[3/6] Preparing model features...")
 
     (
         X_train,
         y_train,
+        X_validation,
+        y_validation,
         X_test,
         y_test,
         feature_columns,
     ) = prepare_features(
         train,
+        validation,
         test,
     )
+
+    # --------------------------------------------------------
+    # Random Forest
+    # --------------------------------------------------------
 
     print()
     print("[4/6] Training Random Forest...")
@@ -623,23 +751,30 @@ def main() -> None:
         y_train,
     )
 
-    print("       Random Forest Training: PASSED")
+    print(
+        "       Random Forest Training: PASSED"
+    )
 
     print()
-    print("Random Forest Evaluation")
+    print("Random Forest Validation Evaluation")
     print("-" * 60)
 
-    rf_metrics = evaluate_model(
+    rf_validation_metrics = evaluate_model(
         rf_model,
-        X_test,
-        y_test,
-        "Random Forest",
+        X_validation,
+        y_validation,
+        "Random Forest Validation",
+        threshold=0.5,
     )
 
     save_model(
         rf_model,
         feature_columns,
     )
+
+    # --------------------------------------------------------
+    # XGBoost
+    # --------------------------------------------------------
 
     print()
     print("[5/6] Training XGBoost...")
@@ -649,17 +784,20 @@ def main() -> None:
         y_train,
     )
 
-    print("       XGBoost Training: PASSED")
+    print(
+        "       XGBoost Training: PASSED"
+    )
 
     print()
-    print("XGBoost Evaluation")
+    print("XGBoost Validation Evaluation")
     print("-" * 60)
 
-    xgb_metrics = evaluate_model(
+    xgb_validation_metrics = evaluate_model(
         xgb_model,
-        X_test,
-        y_test,
-        "XGBoost",
+        X_validation,
+        y_validation,
+        "XGBoost Validation",
+        threshold=0.5,
     )
 
     save_xgboost_model(
@@ -667,13 +805,48 @@ def main() -> None:
         feature_columns,
     )
 
+    # --------------------------------------------------------
+    # Test evaluation
+    # --------------------------------------------------------
+
+    print()
+    print("[6/6] Final test evaluation...")
+
+    print(
+        "\nRandom Forest FINAL TEST Evaluation"
+    )
+    print("-" * 60)
+
+    rf_test_metrics = evaluate_model(
+        rf_model,
+        X_test,
+        y_test,
+        "Random Forest",
+        threshold=0.5,
+    )
+
+    print(
+        "\nXGBoost FINAL TEST Evaluation"
+    )
+    print("-" * 60)
+
+    xgb_test_metrics = evaluate_model(
+        xgb_model,
+        X_test,
+        y_test,
+        "XGBoost",
+        threshold=0.5,
+    )
+
     save_evaluation_report(
-        rf_metrics,
-        xgb_metrics,
+        rf_test_metrics,
+        xgb_test_metrics,
     )
 
     print()
-    print("[6/6] MODEL TRAINING COMPLETE")
+    print("=" * 60)
+    print("ML TRAINING COMPLETE")
+    print("=" * 60)
 
 
 if __name__ == "__main__":

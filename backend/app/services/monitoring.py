@@ -53,10 +53,12 @@ def calculate_monitoring_metrics(
             "accuracy": None,
             "precision": None,
             "recall": None,
+            "f1_score": None,
             "false_positive_count": 0,
             "false_negative_count": 0,
             "true_positive_count": 0,
             "true_negative_count": 0,
+            "business_cost": 0.0,
         }
 
     true_positive = 0
@@ -96,14 +98,33 @@ def calculate_monitoring_metrics(
         else None
     )
 
+    f1_score = (
+        2 * precision * recall / (precision + recall)
+        if precision is not None
+        and recall is not None
+        and (precision + recall) > 0
+        else None
+    )
+
+    # Same business-cost assumptions used during
+    # validation threshold optimization:
+    # false positive = 1
+    # false negative = 5
+    business_cost = (
+        false_positive * 1
+        + false_negative * 5
+    )
+
     return {
         "total_records": total_records,
         "labeled_records": labeled_records,
         "accuracy": accuracy,
         "precision": precision,
         "recall": recall,
+        "f1_score": f1_score,
         "false_positive_count": false_positive,
         "false_negative_count": false_negative,
         "true_positive_count": true_positive,
         "true_negative_count": true_negative,
+        "business_cost": float(business_cost),
     }

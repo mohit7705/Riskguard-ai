@@ -1,0 +1,13 @@
+{
+  "model_name": "RiskGuard XGBoost",
+  "model_type": "XGBoost",
+  "model_file": "riskguard_xgboost.joblib",
+  "model_version": "1.0.0",
+  "decision_threshold": 0.1,
+  "threshold_selection": "validation_set",
+  "positive_class": "abusive",
+  "negative_class": "legitimate",
+  "false_positive_cost": 1.0,
+  "false_negative_cost": 5.0,
+  "production_status": "active"
+}

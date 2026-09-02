@@ -38,14 +38,51 @@ class RiskPredictionResult(BaseModel):
     legitimate_probability: float
     risk_score: float
     risk_level: str
+    decision_threshold: float
     decision: str
     action: str
     reason: str
     top_risk_signals: list[RiskSignal]
     model_type: str
     review_case_id: str | None = None
+    unified_evidence: UnifiedRiskEvidence | None = None
 
 
+class VisionAssessmentRequest(BaseModel):
+    return_reason: str | None = Field(
+        default=None,
+        description="Reported reason for the return, if available.",
+    )
+
+
+class VisionAssessmentResult(BaseModel):
+    available: bool
+    condition: str
+    confidence: float
+    claim_supported: bool | None
+    evidence: list[str]
+    message: str
+
+
+class VisionAssessmentResponse(BaseModel):
+    status: str
+    result: VisionAssessmentResult
+
+class UnifiedRiskEvidence(BaseModel):
+    model_risk_score: float
+    decision_threshold: float
+    model_prediction: str
+    top_risk_signals: list[RiskSignal]
+    vision: VisionAssessmentResult | None = None
+
+
+class UnifiedRiskResult(BaseModel):
+    risk_score: float
+    risk_level: str
+    decision: str
+    action: str
+    reason: str
+    evidence: UnifiedRiskEvidence
 class RiskPredictionResponse(BaseModel):
     status: str
     result: RiskPredictionResult
@@ -108,7 +145,9 @@ class MonitoringResponse(BaseModel):
     accuracy: float | None = None
     precision: float | None = None
     recall: float | None = None
+    f1_score: float | None = None
     false_positive_count: int
     false_negative_count: int
     true_positive_count: int
     true_negative_count: int
+    business_cost: float

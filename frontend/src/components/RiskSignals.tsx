@@ -5,6 +5,10 @@ function RiskSignals({
 }: {
   result: RiskResult
 }) {
+  const signals =
+    result.unified_evidence?.top_risk_signals ??
+    result.top_risk_signals
+
   return (
     <div className="signals">
       <div className="signals-heading">
@@ -16,7 +20,7 @@ function RiskSignals({
         </div>
       </div>
 
-      {result.top_risk_signals.map((signal) => (
+      {signals.map((signal) => (
         <div className="signal" key={signal.feature}>
           <div className="signal-main">
             <strong>{signal.feature}</strong>

@@ -16,7 +16,7 @@ MODEL_PATH = (
     / "backend"
     / "ml"
     / "models"
-    / "riskguard_xgboost_calibrated.joblib"
+    / "riskguard_xgboost.joblib"
 )
 
 FEATURE_IMPORTANCE_PATH = (
@@ -27,12 +27,20 @@ FEATURE_IMPORTANCE_PATH = (
     / "xgboost_feature_importance.parquet"
 )
 
+THRESHOLD_REPORT_PATH = (
+    PROJECT_ROOT
+    / "backend"
+    / "ml"
+    / "models"
+    / "risk_threshold_report.json"
+)
+
 
 class RiskGuardPredictor:
     """
     RiskGuard AI inference layer.
 
-    Loads the trained (calibrated) XGBoost model and applies the
+    Loads the trained raw XGBoost model and applies the
     exact feature transformations required by the training pipeline.
 
     Explainability:
@@ -103,8 +111,30 @@ class RiskGuardPredictor:
         self.target_column = bundle["target_column"]
         self.model_type = bundle["model_type"]
 
-        # Cost-tuned decision threshold, if present in the bundle.
-        self.threshold: float = float(bundle.get("threshold", 0.5))
+        if not THRESHOLD_REPORT_PATH.exists():
+            raise FileNotFoundError(
+                "RiskGuard threshold report not found: "
+                f"{THRESHOLD_REPORT_PATH}"
+            )
+
+        import json
+
+        with THRESHOLD_REPORT_PATH.open("r", encoding="utf-8") as f:
+            threshold_report = json.load(f)
+
+        if "selected_threshold" not in threshold_report:
+            raise RuntimeError(
+                "Threshold report missing 'selected_threshold'."
+            )
+
+        self.threshold = float(
+            threshold_report["selected_threshold"]
+        )
+
+        print(
+            "[RiskGuardPredictor] Locked decision threshold: "
+            f"{self.threshold:.2f}"
+        )
 
         self.feature_importance = pd.read_parquet(
             feature_importance_path
@@ -467,59 +497,122 @@ class RiskGuardPredictor:
         risk signal.
         """
 
-        descriptions = {
-            "vision_confidence_score":
-                "Low vision confidence may indicate an item mismatch or empty package.",
+        if feature == "vision_confidence_score":
+            if value is not None and float(value) <= 0:
+                return (
+                    "No vision assessment was available for this case."
+                )
+            if value is not None and float(value) < 0.50:
+                return (
+                    "Low vision confidence may indicate an item mismatch "
+                    "or empty package."
+                )
+            return (
+                "Vision assessment confidence is relatively high."
+            )
 
-            "time_to_return_request_hours":
-                "Very rapid return requests can indicate suspicious return behavior.",
+        if feature == "time_to_return_request_hours":
+            if value is not None and float(value) <= 48:
+                return (
+                    "Very rapid return requests can indicate suspicious "
+                    "return behavior."
+                )
+            if value is not None and float(value) <= 168:
+                return (
+                    "Returns requested within one week can contribute "
+                    "to return-abuse risk."
+                )
+            return (
+                "The return request was made after a longer period, "
+                "which is less consistent with rapid-return behavior."
+            )
 
-            "order_value":
-                "High-value orders can increase return-abuse exposure.",
+        if feature == "order_value":
+            return (
+                "High-value orders can increase return-abuse exposure."
+            )
 
-            "lifetime_return_count":
-                "High lifetime return activity can indicate repeated return behavior.",
+        if feature == "lifetime_return_count":
+            return (
+                "High lifetime return activity can indicate repeated "
+                "return behavior."
+            )
 
-            "returned_item_match":
-                "Returned item does not match the expected item.",
+        if feature == "returned_item_match":
+            return (
+                "Returned item does not match the expected item."
+            )
 
-            "item_condition_score":
-                "Low item condition score may indicate suspicious item usage.",
+        if feature == "item_condition_score":
+            return (
+                "Low item condition score may indicate suspicious "
+                "item usage."
+            )
 
-            "package_weight_delta_pct":
-                "Large package-weight deviation can indicate an item swap or empty box.",
+        if feature == "package_weight_delta_pct":
+            return (
+                "Large package-weight deviation can indicate an item "
+                "swap or empty box."
+            )
 
-            "return_rate":
-                "High historical return rate is a strong abuse signal.",
+        if feature == "return_rate":
+            return (
+                "High historical return rate is a strong abuse signal."
+            )
 
-            "device_return_velocity_7d":
-                "Multiple returns from the same device within seven days may indicate linked abuse.",
+        if feature == "device_return_velocity_7d":
+            return (
+                "Multiple returns from the same device within seven "
+                "days may indicate linked abuse."
+            )
 
-            "payment_return_velocity_7d":
-                "High return activity linked to the same payment fingerprint may indicate coordinated abuse.",
+        if feature == "payment_return_velocity_7d":
+            return (
+                "High return activity linked to the same payment "
+                "fingerprint may indicate coordinated abuse."
+            )
 
-            "return_velocity_30d":
-                "High return activity over 30 days may indicate serial returning.",
+        if feature == "return_velocity_30d":
+            return (
+                "High return activity over 30 days may indicate "
+                "serial returning."
+            )
 
-            "cluster_return_velocity_7d":
-                "High return activity across linked accounts may indicate an abuse ring.",
+        if feature == "cluster_return_velocity_7d":
+            return (
+                "High return activity across linked accounts may "
+                "indicate an abuse ring."
+            )
 
-            "address_return_velocity_7d":
-                "High return activity associated with the same address may indicate linked accounts.",
+        if feature == "address_return_velocity_7d":
+            return (
+                "High return activity associated with the same "
+                "address may indicate linked accounts."
+            )
 
-            "account_age_days":
-                "Very new accounts with suspicious return behavior can indicate account abuse.",
+        if feature == "account_age_days":
+            if value is not None and float(value) < 30:
+                return (
+                    "Very new accounts with suspicious return behavior "
+                    "can indicate account abuse."
+                )
+            if value is not None and float(value) < 180:
+                return (
+                    "Relatively new accounts may contribute to "
+                    "account-abuse risk."
+                )
+            return (
+                "The account has been active for a longer period, "
+                "which is less consistent with a very new account."
+            )
 
-            "shared_address_count":
-                "Multiple accounts sharing an address may indicate account linkage.",
-        }
+        if feature == "shared_address_count":
+            return (
+                "Multiple accounts sharing an address may indicate "
+                "account linkage."
+            )
 
-        description = descriptions.get(
-            feature,
-            f"Feature {feature} contributed to the model decision.",
-        )
-
-        return description
+        return f"Feature {feature} contributed to the model decision."
 
     # ----------------------------------------------------------
     # Explainability — native XGBoost TreeSHAP (preferred)
@@ -799,7 +892,7 @@ class RiskGuardPredictor:
             ),
             "risk_score": risk_score,
             "risk_level": risk_level,
-            "decision_threshold": self.threshold,
+            "decision_threshold": round(self.threshold, 4),
             "top_risk_signals": risk_signals,
             "model_type": self.model_type,
         }

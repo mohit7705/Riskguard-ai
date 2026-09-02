@@ -199,3 +199,29 @@ export function getUserNetwork(
     `/api/v1/risk/network/${encodeURIComponent(userId)}`,
   )
 }
+export type MonitoringResponse = {
+  status: string
+  total_records: number
+  labeled_records: number
+  accuracy: number | null
+  precision: number | null
+  recall: number | null
+  f1_score: number | null
+  false_positive_count: number
+  false_negative_count: number
+  true_positive_count: number
+  true_negative_count: number
+  business_cost: number
+}
+
+export async function getMonitoringMetrics(): Promise<MonitoringResponse> {
+  const response = await fetch(
+    `${API_BASE}/api/v1/risk/monitoring`,
+  )
+
+  if (!response.ok) {
+    throw new Error("Failed to load monitoring metrics")
+  }
+
+  return response.json()
+}

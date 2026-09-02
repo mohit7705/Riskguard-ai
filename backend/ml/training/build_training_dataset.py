@@ -21,6 +21,10 @@ TRAIN_PATH = Path(
     "data/processed/train.parquet"
 )
 
+VALIDATION_PATH = Path(
+    "data/processed/validation.parquet"
+)
+
 TEST_PATH = Path(
     "data/processed/test.parquet"
 )
@@ -32,6 +36,7 @@ TEST_PATH = Path(
 
 RANDOM_STATE = 42
 TEST_SIZE = 0.20
+VALIDATION_SIZE = 0.20
 
 
 # ============================================================
@@ -375,41 +380,55 @@ def main() -> None:
     # --------------------------------------------------------
 
     print(
-        "\n[6/7] Creating train/test split..."
+        "\n[6/7] Creating train/validation/test split..."
     )
 
-    train, test = train_test_split(
+    development, test = train_test_split(
         training_dataset,
         test_size=TEST_SIZE,
         random_state=RANDOM_STATE,
         stratify=training_dataset[TARGET_COLUMN],
     )
 
-    train = train.reset_index(
-        drop=True
+    train, validation = train_test_split(
+        development,
+        test_size=VALIDATION_SIZE,
+        random_state=RANDOM_STATE,
+        stratify=development[TARGET_COLUMN],
     )
 
-    test = test.reset_index(
-        drop=True
-    )
+    train = train.reset_index(drop=True)
+    validation = validation.reset_index(drop=True)
+    test = test.reset_index(drop=True)
 
-    expected_train = 8_000
+    expected_train = 6_400
+    expected_validation = 1_600
     expected_test = 2_000
 
     if len(train) != expected_train:
         raise RuntimeError(
-            f"Unexpected train size: "
-            f"{len(train)}"
+            f"Unexpected train size: {len(train)}"
+        )
+
+    if len(validation) != expected_validation:
+        raise RuntimeError(
+            f"Unexpected validation size: {len(validation)}"
         )
 
     if len(test) != expected_test:
         raise RuntimeError(
-            f"Unexpected test size: "
-            f"{len(test)}"
+            f"Unexpected test size: {len(test)}"
         )
 
     train_distribution = (
         train[TARGET_COLUMN]
+        .value_counts()
+        .sort_index()
+        .to_dict()
+    )
+
+    validation_distribution = (
+        validation[TARGET_COLUMN]
         .value_counts()
         .sort_index()
         .to_dict()
@@ -423,19 +442,27 @@ def main() -> None:
     )
 
     print(
-        f"       Train rows: {len(train):,}"
+        f"       Train rows:      {len(train):,}"
     )
 
     print(
-        f"       Test rows:  {len(test):,}"
+        f"       Validation rows: {len(validation):,}"
     )
 
     print(
-        f"       Train labels: {train_distribution}"
+        f"       Test rows:       {len(test):,}"
     )
 
     print(
-        f"       Test labels:  {test_distribution}"
+        f"       Train labels:      {train_distribution}"
+    )
+
+    print(
+        f"       Validation labels: {validation_distribution}"
+    )
+
+    print(
+        f"       Test labels:       {test_distribution}"
     )
 
     # --------------------------------------------------------
@@ -458,6 +485,11 @@ def main() -> None:
 
     train.to_parquet(
         TRAIN_PATH,
+        index=False,
+    )
+
+    validation.to_parquet(
+        VALIDATION_PATH,
         index=False,
     )
 
@@ -486,6 +518,11 @@ def main() -> None:
     print(
         f"Train dataset:    "
         f"{TRAIN_PATH}"
+    )
+
+    print(
+        f"Validation dataset: "
+        f"{VALIDATION_PATH}"
     )
 
     print(

@@ -36,11 +36,11 @@ function ModelInsights({ performance, impact }: Props) {
       {performance && (
         <div className="chart-card model-perf-card">
           <div className="model-perf-header">
-            <h3>Model Performance</h3>
+            <h3>Offline Model Validation</h3>
 
             <span className="model-perf-meta">
               {performance.model} · {performance.test_rows}{" "}
-              held-out rows · threshold {performance.threshold}
+              held-out test rows · threshold {performance.threshold}
             </span>
           </div>
 

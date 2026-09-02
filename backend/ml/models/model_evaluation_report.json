@@ -1,39 +1,47 @@
 {
+    "evaluation_protocol": {
+        "train_rows": 6400,
+        "validation_rows": 1600,
+        "test_rows": 2000,
+        "test_usage": "Final evaluation only. Not used for threshold selection."
+    },
     "random_forest": {
         "model": "Random Forest",
-        "accuracy": 0.9875,
-        "precision": 0.9454,
-        "recall": 0.995,
-        "f1_score": 0.9695,
+        "threshold": 0.5,
+        "accuracy": 0.9895,
+        "precision": 0.9501,
+        "recall": 1.0,
+        "f1_score": 0.9744,
         "roc_auc": 0.9971,
-        "pr_auc": 0.9818,
+        "pr_auc": 0.979,
         "confusion_matrix": [
             [
-                1577,
-                23
+                1579,
+                21
             ],
             [
-                2,
-                398
+                0,
+                400
             ]
         ]
     },
     "xgboost": {
         "model": "XGBoost",
-        "accuracy": 0.988,
-        "precision": 0.9631,
-        "recall": 0.9775,
-        "f1_score": 0.9702,
-        "roc_auc": 0.9992,
-        "pr_auc": 0.997,
+        "threshold": 0.5,
+        "accuracy": 0.987,
+        "precision": 0.9652,
+        "recall": 0.97,
+        "f1_score": 0.9676,
+        "roc_auc": 0.999,
+        "pr_auc": 0.996,
         "confusion_matrix": [
             [
-                1585,
-                15
+                1586,
+                14
             ],
             [
-                9,
-                391
+                12,
+                388
             ]
         ]
     }

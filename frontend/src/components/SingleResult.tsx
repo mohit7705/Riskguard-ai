@@ -13,6 +13,7 @@ function SingleResult({
 }) {
   const riskClass = result.risk_level.toLowerCase()
   const isAbusive = result.prediction === 'ABUSIVE'
+  const evidence = result.unified_evidence
 
   return (
     <div className="result-content">
@@ -32,8 +33,10 @@ function SingleResult({
 
         <div className="risk-score">
           <Gauge size={16} strokeWidth={2.2} />
-          <span>Risk Score</span>
-          <strong>{result.risk_score}</strong>
+          <span>Model Risk Score</span>
+          <strong>
+            {evidence?.model_risk_score ?? result.risk_score}
+          </strong>
         </div>
       </div>
 
@@ -52,14 +55,14 @@ function SingleResult({
         <div className="metric">
           <span>Abuse Probability</span>
           <strong>
-            {(result.abuse_probability * 100).toFixed(2)}%
+            {(result.abuse_probability * 100).toFixed(2)}
           </strong>
         </div>
 
         <div className="metric">
           <span>Legitimate Probability</span>
           <strong>
-            {(result.legitimate_probability * 100).toFixed(2)}%
+            {(result.legitimate_probability * 100).toFixed(2)}
           </strong>
         </div>
       </div>
@@ -73,6 +76,18 @@ function SingleResult({
         <div className="decision-card-row">
           <span>ACTION</span>
           <strong>{result.action}</strong>
+        </div>
+
+        <div className="decision-card-row">
+          <span>DECISION THRESHOLD</span>
+          <strong>
+            {(
+              (evidence?.decision_threshold ??
+                result.decision_threshold) *
+              100
+            ).toFixed(0)}
+            %
+          </strong>
         </div>
 
         <p>{result.reason}</p>

@@ -11,6 +11,7 @@ import ReviewQueue from "./ReviewQueue"
 import ReportCharts from "./ReportCharts"
 import ModelInsights from "./ModelInsights"
 import ThresholdCurve from "./ThresholdCurve"
+import LiveMonitoring from "./LiveMonitoring"
 import "./ReportDashboard.css"
 import {
   getReportDashboard,
@@ -54,11 +55,27 @@ function buildReportCsv(report: ReportDashboardResponse): string {
 
   row("DECISIONS TREND");
   row("Date", "Allowed", "Blocked", "Review");
+
   report.decision_trend.forEach((point) => {
-    row(point.date, point.allow, point.block, point.review);
+  row(point.date, point.allow, point.block, point.review);
   });
+
   row("");
 
+  row("DAILY REPORT DATA");
+  row("Date", "Total", "Allowed", "Blocked", "Review");
+
+  report.daily_data.forEach((point) => {
+  row(
+    point.date,
+    point.total,
+    point.allowed,
+    point.blocked,
+    point.review,
+  );
+  });
+
+  row("");
   row("TOP RISK REASONS");
   row("Reason", "Count");
   report.top_risk_reasons.forEach((item) => {
@@ -287,6 +304,8 @@ function ReportDashboard() {
           reasons={report?.top_risk_reasons ?? []}
         />
       </div>
+
+      <LiveMonitoring />
 
       <ModelInsights
         performance={report?.model_performance}

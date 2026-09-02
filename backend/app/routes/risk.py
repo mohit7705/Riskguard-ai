@@ -1,4 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+)
 from sqlalchemy.orm import Session
 
 from backend.app.db.database import get_db
@@ -14,6 +21,9 @@ from backend.app.schemas.risk import (
     FeedbackListResponse,
     ActualOutcomeRequest,
     MonitoringResponse,
+    VisionAssessmentRequest,
+    VisionAssessmentResponse,
+    VisionAssessmentResult,
 )
 from backend.app.services.review_queue import (
     create_review_case,
@@ -35,7 +45,9 @@ from backend.app.services.monitoring import (
 )
 from backend.app.services.network import build_user_network
 from backend.ml.decision.risk_decision import make_risk_decision
+from backend.ml.decision.unified_risk import build_unified_risk_result
 from backend.ml.inference.predictor import load_predictor
+from backend.ml.vision.gemini_vision import GeminiVisionService
 
 
 router = APIRouter(
@@ -45,6 +57,7 @@ router = APIRouter(
 
 
 predictor = load_predictor()
+vision_service = GeminiVisionService()
 
 
 def attach_review_case(
@@ -110,6 +123,10 @@ def predict_risk(
 
         decision = make_risk_decision(result)
         result.update(decision)
+
+        unified = build_unified_risk_result(result)
+
+        result["unified_evidence"] = unified.evidence.model_dump()
 
         result = attach_review_case(
             db=db,
@@ -186,6 +203,10 @@ def predict_risk_batch(
             decision = make_risk_decision(prediction)
             prediction.update(decision)
 
+            unified = build_unified_risk_result(prediction)
+
+            prediction["unified_evidence"] = unified.evidence.model_dump()
+
             prediction = attach_review_case(
                 db=db,
                 prediction=prediction,
@@ -221,6 +242,47 @@ def predict_risk_batch(
             status_code=500,
             detail=f"{type(exc).__name__}: {exc}",
         ) from exc
+
+
+@router.post(
+    "/vision-assess",
+    response_model=VisionAssessmentResponse,
+)
+async def assess_return_image(
+    image: UploadFile = File(...),
+    return_reason: str | None = Form(default=None),
+) -> VisionAssessmentResponse:
+
+    if not image.content_type:
+        raise HTTPException(
+            status_code=400,
+            detail="Image content type is required.",
+        )
+
+    if not image.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded file must be an image.",
+        )
+
+    image_bytes = await image.read()
+
+    if not image_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded image is empty.",
+        )
+
+    result = vision_service.analyze_image(
+        image_bytes=image_bytes,
+        mime_type=image.content_type,
+        return_reason=return_reason,
+    )
+
+    return VisionAssessmentResponse(
+        status="success" if result["available"] else "unavailable",
+        result=VisionAssessmentResult(**result),
+    )
 
 
 @router.get(
