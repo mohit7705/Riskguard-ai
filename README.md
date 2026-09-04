@@ -74,6 +74,21 @@ A simple binary classifier is not sufficient for an operational risk system — 
 
 ## 2. Key Features
 
+### Assignment / Workspace Management
+
+RiskGuard AI organizes operational data into isolated merchant workspaces called assignments. Each assignment has a unique user-facing assignment number and an assignment name.
+
+The entry flow supports:
+
+- Entering an email address or an existing assignment number.
+- Looking up an existing assignment by its assignment number.
+- Creating a new assignment when the provided number does not exist.
+- Automatically associating assessments, predictions, review cases, feedback, monitoring data, and reporting data with the selected assignment.
+- Keeping data from different assignment numbers isolated from one another.
+- Returning to an existing workspace by entering the same assignment number again.
+
+The assignment number is the human-facing lookup key. Internally, the database uses a separate assignment ID as the primary key so that related assessment and operational records can be safely linked through database relationships.
+
 ### Return Risk Scoring
 
 Each return request is evaluated using behavioral, transactional, account, package, and network-related signals. The model outputs:
