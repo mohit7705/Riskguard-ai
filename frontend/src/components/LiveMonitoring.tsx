@@ -20,7 +20,13 @@ function formatMetric(value: number | null) {
   return `${(value * 100).toFixed(2)}%`;
 }
 
-function LiveMonitoring() {
+type LiveMonitoringProps = {
+  assignmentNumber: string
+}
+
+function LiveMonitoring({
+  assignmentNumber,
+}: LiveMonitoringProps) {
   const [metrics, setMetrics] = useState<MonitoringResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -36,7 +42,9 @@ function LiveMonitoring() {
 
       setError(null);
 
-      const data = await getMonitoringMetrics();
+      const data = await getMonitoringMetrics(
+        assignmentNumber,
+      );
       setMetrics(data);
     } catch (err) {
       setError(
@@ -48,7 +56,7 @@ function LiveMonitoring() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [assignmentNumber]);
 
   useEffect(() => {
     void loadMetrics();

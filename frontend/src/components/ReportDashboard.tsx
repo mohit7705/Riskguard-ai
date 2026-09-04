@@ -176,10 +176,12 @@ function downloadCsv(filename: string, content: string) {
 type ReviewFilter = 'all' | 'pending' | 'allowed' | 'blocked'
 
 type ReportDashboardProps = {
+  assignmentNumber: string
   onReviewFilter: (filter: ReviewFilter) => void
 }
 
 function ReportDashboard({
+  assignmentNumber,
   onReviewFilter,
 }: ReportDashboardProps) {
   const [report, setReport] =
@@ -191,7 +193,7 @@ function ReportDashboard({
   useEffect(() => {
     async function loadReport() {
       try {
-        const data = await getReportDashboard();
+        const data = await getReportDashboard(assignmentNumber);
         setReport(data);
       } catch (error) {
         console.error(error);
@@ -201,7 +203,7 @@ function ReportDashboard({
     }
 
     loadReport();
-  }, []);
+  }, [assignmentNumber]);
 
   const handleExport = () => {
     if (!report) {
@@ -332,7 +334,7 @@ function ReportDashboard({
         />
       </div>
 
-      <LiveMonitoring />
+      <LiveMonitoring assignmentNumber={assignmentNumber} />
 
       <ModelInsights
         performance={report?.model_performance}

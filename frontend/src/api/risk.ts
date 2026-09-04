@@ -139,6 +139,7 @@ async function request<T>(
 }
 
 export type ReviewQueueParams = {
+  assignmentNumber: string
   page?: number
   pageSize?: number
   search?: string
@@ -148,6 +149,10 @@ export function getReviewQueue(
   params?: ReviewQueueParams,
 ): Promise<ReviewCaseListResponse> {
   const query = new URLSearchParams()
+
+  if (params?.assignmentNumber) {
+    query.set('assignment_number', params.assignmentNumber)
+  }
 
   if (params?.page) {
     query.set('page', String(params.page))
@@ -170,19 +175,29 @@ export function getReviewQueue(
 
 export function getReviewCase(
   caseId: string,
+  assignmentNumber: string,
 ): Promise<ReviewCase> {
+  const query = new URLSearchParams({
+    assignment_number: assignmentNumber,
+  })
+
   return request<ReviewCase>(
-    `/api/v1/risk/review-queue/${encodeURIComponent(caseId)}`,
+    `/api/v1/risk/review-queue/${encodeURIComponent(caseId)}?${query.toString()}`,
   )
 }
 
 export function decideReviewCase(
   caseId: string,
+  assignmentNumber: string,
   decision: string,
   reason?: string,
 ): Promise<ReviewCase> {
+  const query = new URLSearchParams({
+    assignment_number: assignmentNumber,
+  })
+
   return request<ReviewCase>(
-    `/api/v1/risk/review-queue/${encodeURIComponent(caseId)}/decision`,
+    `/api/v1/risk/review-queue/${encodeURIComponent(caseId)}/decision?${query.toString()}`,
     {
       method: 'POST',
       body: JSON.stringify({
@@ -193,9 +208,15 @@ export function decideReviewCase(
   )
 }
 
-export function getFeedback(): Promise<FeedbackListResponse> {
+export function getFeedback(
+  assignmentNumber: string,
+): Promise<FeedbackListResponse> {
+  const query = new URLSearchParams({
+    assignment_number: assignmentNumber,
+  })
+
   return request<FeedbackListResponse>(
-    '/api/v1/risk/feedback',
+    `/api/v1/risk/feedback?${query.toString()}`,
   )
 }
 
@@ -206,6 +227,7 @@ export type ReviewAnalysisFilter =
   | 'blocked'
 
 export type ReviewAnalysisParams = {
+  assignmentNumber: string
   filter?: ReviewAnalysisFilter
   page?: number
   pageSize?: number
@@ -216,6 +238,10 @@ export function getReviewAnalysis(
   params?: ReviewAnalysisParams,
 ): Promise<FeedbackListResponse> {
   const query = new URLSearchParams()
+
+  if (params?.assignmentNumber) {
+    query.set('assignment_number', params.assignmentNumber)
+  }
 
   if (params?.filter) {
     query.set('filter_type', params.filter)
@@ -242,18 +268,28 @@ export function getReviewAnalysis(
 
 export function getFeedbackRecord(
   feedbackId: number,
+  assignmentNumber: string,
 ): Promise<FeedbackRecord> {
+  const query = new URLSearchParams({
+    assignment_number: assignmentNumber,
+  })
+
   return request<FeedbackRecord>(
-    `/api/v1/risk/feedback/${feedbackId}`,
+    `/api/v1/risk/feedback/${feedbackId}?${query.toString()}`,
   )
 }
 
 export function recordActualOutcome(
   feedbackId: number,
+  assignmentNumber: string,
   actualOutcome: string,
 ): Promise<FeedbackRecord> {
+  const query = new URLSearchParams({
+    assignment_number: assignmentNumber,
+  })
+
   return request<FeedbackRecord>(
-    `/api/v1/risk/feedback/${feedbackId}/outcome`,
+    `/api/v1/risk/feedback/${feedbackId}/outcome?${query.toString()}`,
     {
       method: 'POST',
       body: JSON.stringify({
@@ -263,17 +299,28 @@ export function recordActualOutcome(
   )
 }
 
-export function getMonitoring(): Promise<MonitoringMetrics> {
+export function getMonitoring(
+  assignmentNumber: string,
+): Promise<MonitoringMetrics> {
+  const query = new URLSearchParams({
+    assignment_number: assignmentNumber,
+  })
+
   return request<MonitoringMetrics>(
-    '/api/v1/risk/monitoring',
+    `/api/v1/risk/monitoring?${query.toString()}`,
   )
 }
 
 export function getUserNetwork(
   userId: string,
+  assignmentNumber: string,
 ): Promise<UserNetwork> {
+  const query = new URLSearchParams({
+    assignment_number: assignmentNumber,
+  })
+
   return request<UserNetwork>(
-    `/api/v1/risk/network/${encodeURIComponent(userId)}`,
+    `/api/v1/risk/network/${encodeURIComponent(userId)}?${query.toString()}`,
   )
 }
 export type MonitoringResponse = {
@@ -291,9 +338,15 @@ export type MonitoringResponse = {
   business_cost: number
 }
 
-export async function getMonitoringMetrics(): Promise<MonitoringResponse> {
+export async function getMonitoringMetrics(
+  assignmentNumber: string,
+): Promise<MonitoringResponse> {
+  const query = new URLSearchParams({
+    assignment_number: assignmentNumber,
+  })
+
   const response = await fetch(
-    `${API_BASE}/api/v1/risk/monitoring`,
+    `${API_BASE}/api/v1/risk/monitoring?${query.toString()}`,
   )
 
   if (!response.ok) {

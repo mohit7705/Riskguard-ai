@@ -2,14 +2,25 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from backend.app.db.models import RiskFeedback
+from backend.app.db.models import Assessment, RiskFeedback
 
 
 def get_feedback_records(
     db: Session,
+    assignment_id: str | None = None,
 ) -> list[RiskFeedback]:
+    query = db.query(RiskFeedback)
+
+    if assignment_id is not None:
+        query = query.join(
+            Assessment,
+            Assessment.assessment_id == RiskFeedback.assessment_id,
+        ).filter(
+            Assessment.assignment_id == assignment_id
+        )
+
     return (
-        db.query(RiskFeedback)
+        query
         .order_by(RiskFeedback.created_at.desc())
         .all()
     )
@@ -18,17 +29,43 @@ def get_feedback_records(
 def get_feedback_record(
     db: Session,
     feedback_id: int,
+    assignment_id: str | None = None,
 ) -> RiskFeedback | None:
-    return db.get(RiskFeedback, feedback_id)
+    query = db.query(RiskFeedback).filter(
+        RiskFeedback.id == feedback_id
+    )
+
+    if assignment_id is not None:
+        query = query.join(
+            Assessment,
+            Assessment.assessment_id == RiskFeedback.assessment_id,
+        ).filter(
+            Assessment.assignment_id == assignment_id
+        )
+
+    return query.first()
 
 
 def get_feedback_record_by_case_id(
     db: Session,
     case_id: str,
+    assignment_id: str | None = None,
 ) -> RiskFeedback | None:
-    return (
+    query = (
         db.query(RiskFeedback)
         .filter(RiskFeedback.case_id == case_id)
+    )
+
+    if assignment_id is not None:
+        query = query.join(
+            Assessment,
+            Assessment.assessment_id == RiskFeedback.assessment_id,
+        ).filter(
+            Assessment.assignment_id == assignment_id
+        )
+
+    return (
+        query
         .order_by(RiskFeedback.created_at.desc())
         .first()
     )
@@ -36,14 +73,25 @@ def get_feedback_record_by_case_id(
 
 def calculate_monitoring_metrics(
     db: Session,
+    assignment_id: str | None = None,
 ) -> dict:
+    query = db.query(RiskFeedback)
+
+    if assignment_id is not None:
+        query = query.join(
+            Assessment,
+            Assessment.assessment_id == RiskFeedback.assessment_id,
+        ).filter(
+            Assessment.assignment_id == assignment_id
+        )
+
     records = (
-        db.query(RiskFeedback)
+        query
         .filter(RiskFeedback.actual_outcome.is_not(None))
         .all()
     )
 
-    total_records = db.query(RiskFeedback).count()
+    total_records = query.count()
     labeled_records = len(records)
 
     if labeled_records == 0:
@@ -106,10 +154,6 @@ def calculate_monitoring_metrics(
         else None
     )
 
-    # Same business-cost assumptions used during
-    # validation threshold optimization:
-    # false positive = 1
-    # false negative = 5
     business_cost = (
         false_positive * 1
         + false_negative * 5

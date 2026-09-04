@@ -11,6 +11,7 @@ class RiskPredictionRequest(BaseModel):
         min_length=1,
         description="Return and user feature data to evaluate.",
     )
+    assignment_number: str
     assessment_id: str | None = None
 
 
@@ -20,6 +21,7 @@ class BatchRiskPredictionRequest(BaseModel):
         min_length=1,
         description="Multiple return and user feature records to evaluate.",
     )
+    assignment_number: str
     assessment_id: str | None = None
 
 

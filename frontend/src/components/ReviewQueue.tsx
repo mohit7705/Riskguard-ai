@@ -8,6 +8,7 @@ import {
 } from '../api/risk'
 
 type ReviewQueueProps = {
+  assignmentNumber: string
   onResolved?: () => void
 }
 
@@ -109,6 +110,7 @@ function formatDateTime(iso: string | null): string {
 }
 
 function ReviewQueue({
+  assignmentNumber,
   onResolved,
 }: ReviewQueueProps) {
   const [cases, setCases] = useState<ReviewCase[]>([])
@@ -147,6 +149,7 @@ function ReviewQueue({
 
     try {
       const response = await getReviewQueue({
+        assignmentNumber,
         page: targetPage,
         pageSize: PAGE_SIZE,
         search: targetSearch || undefined,
@@ -185,7 +188,7 @@ function ReviewQueue({
     void loadQueue(1, search)
     setSelectedCase(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search])
+  }, [search, assignmentNumber])
 
   const goToPage = (nextPage: number) => {
     if (nextPage < 1 || nextPage > totalPages) {
@@ -201,7 +204,10 @@ function ReviewQueue({
     setActiveTab('signals')
 
     try {
-      const reviewCase = await getReviewCase(caseId)
+      const reviewCase = await getReviewCase(
+        caseId,
+        assignmentNumber,
+      )
 
       setSelectedCase(reviewCase)
       setReason(reviewCase.analyst_reason ?? '')
@@ -236,6 +242,7 @@ function ReviewQueue({
     try {
       await decideReviewCase(
         selectedCase.case_id,
+        assignmentNumber,
         decision,
         trimmedReason,
       )

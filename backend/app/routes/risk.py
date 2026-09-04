@@ -38,7 +38,11 @@ from backend.app.services.feedback import (
     update_feedback_decision,
     record_actual_outcome,
 )
-from backend.app.services.assessment import create_assessment, get_assessment
+from backend.app.services.assessment import (
+    create_assessment,
+    get_assessment,
+    get_assignment_by_number,
+)
 from backend.app.services.monitoring import (
     get_feedback_records,
     get_feedback_record,
@@ -77,6 +81,7 @@ def attach_review_case(
             db=db,
             prediction=prediction,
             data=data,
+            assessment_id=prediction.get("assessment_id"),
         )
 
         prediction["review_case_id"] = case["case_id"]
@@ -97,6 +102,18 @@ def predict_risk(
 ) -> RiskPredictionResponse:
 
     try:
+        assignment = get_assignment_by_number(
+            db=db,
+            assignment_number=request.assignment_number,
+        )
+
+        if assignment is None:
+            raise ValueError(
+                f"Assignment not found: {request.assignment_number}"
+            )
+
+        assignment_id = assignment.assignment_id
+
         if request.assessment_id:
             assessment = get_assessment(
                 db=db,
@@ -108,18 +125,27 @@ def predict_risk(
                     f"Assessment not found: {request.assessment_id}"
                 )
 
+            if assessment.assignment_id != assignment_id:
+                raise ValueError(
+                    "Assessment does not belong to the specified assignment"
+                )
+
             assessment_id = assessment.assessment_id
 
         else:
+            assessment_id = None
+
+        result = predictor.predict(request.data)
+
+        if assessment_id is None:
             assessment = create_assessment(
                 db=db,
+                assignment_id=assignment_id,
                 assessment_type="SINGLE",
                 total_records=1,
             )
 
             assessment_id = assessment.assessment_id
-
-        result = predictor.predict(request.data)
 
         result["assessment_id"] = assessment_id
 
@@ -175,6 +201,18 @@ def predict_risk_batch(
     results = []
 
     try:
+        assignment = get_assignment_by_number(
+            db=db,
+            assignment_number=request.assignment_number,
+        )
+
+        if assignment is None:
+            raise ValueError(
+                f"Assignment not found: {request.assignment_number}"
+            )
+
+        assignment_id = assignment.assignment_id
+
         if request.assessment_id:
             assessment = get_assessment(
                 db=db,
@@ -186,11 +224,17 @@ def predict_risk_batch(
                     f"Assessment not found: {request.assessment_id}"
                 )
 
+            if assessment.assignment_id != assignment_id:
+                raise ValueError(
+                    "Assessment does not belong to the specified assignment"
+                )
+
             assessment_id = assessment.assessment_id
 
         else:
             assessment = create_assessment(
                 db=db,
+                assignment_id=assignment_id,
                 assessment_type="BATCH",
                 total_records=len(request.data),
             )
@@ -292,17 +336,30 @@ async def assess_return_image(
     response_model=ReviewCaseListResponse,
 )
 def get_review_queue(
+    assignment_number: str = Query(...),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     search: str | None = Query(None),
     db: Session = Depends(get_db),
 ) -> ReviewCaseListResponse:
 
+    assignment = get_assignment_by_number(
+        db=db,
+        assignment_number=assignment_number,
+    )
+
+    if assignment is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Assignment not found: {assignment_number}",
+        )
+
     result = list_review_cases(
         db=db,
         page=page,
         page_size=page_size,
         search=search,
+        assignment_id=assignment.assignment_id,
     )
 
     return ReviewCaseListResponse(
@@ -316,6 +373,7 @@ def get_review_queue(
     response_model=FeedbackListResponse,
 )
 def get_review_analysis(
+    assignment_number: str = Query(...),
     filter_type: str = Query("all"),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
@@ -323,12 +381,24 @@ def get_review_analysis(
     db: Session = Depends(get_db),
 ) -> dict:
 
+    assignment = get_assignment_by_number(
+        db=db,
+        assignment_number=assignment_number,
+    )
+
+    if assignment is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Assignment not found: {assignment_number}",
+        )
+
     result = list_review_analysis(
         db=db,
         filter_type=filter_type,
         page=page,
         page_size=page_size,
         search=search,
+        assignment_id=assignment.assignment_id,
     )
 
     return {
@@ -343,10 +413,26 @@ def get_review_analysis(
 )
 def get_review_case_detail(
     case_id: str,
+    assignment_number: str = Query(...),
     db: Session = Depends(get_db),
 ) -> ReviewCaseResponse:
 
-    case = get_review_case(db, case_id)
+    assignment = get_assignment_by_number(
+        db=db,
+        assignment_number=assignment_number,
+    )
+
+    if assignment is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Assignment not found: {assignment_number}",
+        )
+
+    case = get_review_case(
+        db,
+        case_id,
+        assignment_id=assignment.assignment_id,
+    )
 
     if case is None:
         raise HTTPException(
@@ -366,20 +452,33 @@ def get_review_case_detail(
 def decide_review_case(
     case_id: str,
     request: ReviewDecisionRequest,
+    assignment_number: str = Query(...),
     db: Session = Depends(get_db),
 ) -> ReviewCaseResponse:
 
     try:
+        assignment = get_assignment_by_number(
+            db=db,
+            assignment_number=assignment_number,
+        )
+
+        if assignment is None:
+            raise ValueError(
+                f"Assignment not found: {assignment_number}"
+            )
+
         case = resolve_review_case(
             db=db,
             case_id=case_id,
             decision=request.decision,
             reason=request.reason,
+            assignment_id=assignment.assignment_id,
         )
 
         feedback_record = get_feedback_record_by_case_id(
             db=db,
             case_id=case_id,
+            assignment_id=assignment.assignment_id,
         )
 
         if feedback_record is None:
@@ -420,10 +519,25 @@ def decide_review_case(
     response_model=FeedbackListResponse,
 )
 def get_feedback(
+    assignment_number: str = Query(...),
     db: Session = Depends(get_db),
 ) -> FeedbackListResponse:
 
-    records = get_feedback_records(db)
+    assignment = get_assignment_by_number(
+        db=db,
+        assignment_number=assignment_number,
+    )
+
+    if assignment is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Assignment not found: {assignment_number}",
+        )
+
+    records = get_feedback_records(
+        db,
+        assignment_id=assignment.assignment_id,
+    )
 
     return FeedbackListResponse(
         status="success",
@@ -459,12 +573,25 @@ def get_feedback(
 )
 def get_feedback_detail(
     feedback_id: int,
+    assignment_number: str = Query(...),
     db: Session = Depends(get_db),
 ) -> FeedbackResponse:
+
+    assignment = get_assignment_by_number(
+        db=db,
+        assignment_number=assignment_number,
+    )
+
+    if assignment is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Assignment not found: {assignment_number}",
+        )
 
     record = get_feedback_record(
         db,
         feedback_id,
+        assignment_id=assignment.assignment_id,
     )
 
     if record is None:
@@ -502,10 +629,30 @@ def get_feedback_detail(
 def submit_actual_outcome(
     feedback_id: int,
     request: ActualOutcomeRequest,
+    assignment_number: str = Query(...),
     db: Session = Depends(get_db),
 ) -> FeedbackResponse:
 
     try:
+        assignment = get_assignment_by_number(
+            db=db,
+            assignment_number=assignment_number,
+        )
+
+        if assignment is None:
+            raise ValueError(
+                f"Assignment not found: {assignment_number}"
+            )
+
+        record = get_feedback_record(
+            db,
+            feedback_id,
+            assignment_id=assignment.assignment_id,
+        )
+
+        if record is None:
+            raise ValueError("Feedback record not found.")
+
         record = record_actual_outcome(
             db=db,
             feedback_id=feedback_id,
@@ -545,10 +692,25 @@ def submit_actual_outcome(
     response_model=MonitoringResponse,
 )
 def get_monitoring_metrics(
+    assignment_number: str = Query(...),
     db: Session = Depends(get_db),
 ) -> MonitoringResponse:
 
-    metrics = calculate_monitoring_metrics(db)
+    assignment = get_assignment_by_number(
+        db=db,
+        assignment_number=assignment_number,
+    )
+
+    if assignment is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Assignment not found: {assignment_number}",
+        )
+
+    metrics = calculate_monitoring_metrics(
+        db,
+        assignment_id=assignment.assignment_id,
+    )
 
     return MonitoringResponse(
         status="success",

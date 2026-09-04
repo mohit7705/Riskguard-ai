@@ -98,11 +98,16 @@ export type ReportDashboardResponse = {
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"
 
 
-export async function getReportDashboard()
-: Promise<ReportDashboardResponse> {
+export async function getReportDashboard(
+  assignmentNumber: string,
+): Promise<ReportDashboardResponse> {
+
+  const query = new URLSearchParams({
+    assignment_number: assignmentNumber,
+  })
 
   const response = await fetch(
-    `${API_BASE}/api/v1/report/dashboard`
+    `${API_BASE}/api/v1/report/dashboard?${query.toString()}`
   )
 
 

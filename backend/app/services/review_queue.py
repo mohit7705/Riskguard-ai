@@ -6,13 +6,14 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
-from backend.app.db.models import RiskFeedback, ReviewCase
+from backend.app.db.models import Assessment, RiskFeedback, ReviewCase
 
 
 def create_review_case(
     db: Session,
     prediction: dict[str, Any],
     data: dict[str, Any],
+    assessment_id: str | None = None,
 ) -> dict[str, Any]:
     case_id = f"RG-{uuid4().hex[:10].upper()}"
 
@@ -20,6 +21,7 @@ def create_review_case(
 
     case = ReviewCase(
         case_id=case_id,
+        assessment_id=assessment_id,
         status="OPEN",
         prediction=prediction,
         data=data,
@@ -35,26 +37,15 @@ def create_review_case(
 def build_review_case(
     prediction: dict[str, Any],
     data: dict[str, Any],
+    assessment_id: str | None = None,
 ) -> ReviewCase:
-    """
-    Build (but do NOT add/commit) a ReviewCase ORM object.
-
-    Use this in bulk/batch flows where many cases are created in one
-    request — the caller is responsible for db.add_all(...) and a
-    single db.commit() across the whole batch (or in chunks), instead
-    of one commit per case as create_review_case() does.
-
-    Sets prediction['review_case_id'] in place, same as
-    create_review_case() does, so downstream code (e.g. building the
-    matching RiskFeedback row) can rely on it being present.
-    """
-
     case_id = f"RG-{uuid4().hex[:10].upper()}"
 
     prediction["review_case_id"] = case_id
 
     return ReviewCase(
         case_id=case_id,
+        assessment_id=assessment_id,
         status="OPEN",
         prediction=prediction,
         data=data,
@@ -66,15 +57,20 @@ def list_review_cases(
     page: int = 1,
     page_size: int = 20,
     search: str | None = None,
+    assignment_id: str | None = None,
 ) -> dict[str, Any]:
-    """
-    Return a page of OPEN review cases, ordered oldest-first, with
-    pagination metadata. If `search` is provided, filters case_id
-    with a case-insensitive partial match (e.g. "F7D3" matches
-    "RG-F7D32B73A7").
-    """
 
-    query = db.query(ReviewCase).filter(ReviewCase.status == "OPEN")
+    query = db.query(ReviewCase).filter(
+        ReviewCase.status == "OPEN"
+    )
+
+    if assignment_id is not None:
+        query = query.join(
+            Assessment,
+            Assessment.assessment_id == ReviewCase.assessment_id,
+        ).filter(
+            Assessment.assignment_id == assignment_id
+        )
 
     if search:
         trimmed = search.strip()
@@ -86,12 +82,15 @@ def list_review_cases(
 
     total = query.count()
 
-    total_pages = max(1, (total + page_size - 1) // page_size)
+    total_pages = max(
+        1,
+        (total + page_size - 1) // page_size,
+    )
 
-    # Clamp so an out-of-range page (e.g. requesting page 9 after a
-    # search narrows the results) doesn't return an empty page by
-    # accident — it snaps back to the last valid page instead.
-    page = max(1, min(page, total_pages))
+    page = max(
+        1,
+        min(page, total_pages),
+    )
 
     cases = (
         query
@@ -121,19 +120,8 @@ def list_review_analysis(
     page: int = 1,
     page_size: int = 10,
     search: str | None = None,
+    assignment_id: str | None = None,
 ) -> dict[str, Any]:
-    """
-    Return paginated RiskFeedback records for the Review Analysis
-    dashboard.
-
-    Filters:
-    - all: every prediction
-    - pending: predictions linked to an OPEN ReviewCase
-    - allowed: model decision ALLOW
-    - blocked: model decision BLOCK
-
-    Search performs a case-insensitive partial match on case_id.
-    """
 
     filter_type = filter_type.lower().strip()
 
@@ -148,6 +136,14 @@ def list_review_analysis(
         )
 
     query = db.query(RiskFeedback)
+
+    if assignment_id is not None:
+        query = query.join(
+            Assessment,
+            Assessment.assessment_id == RiskFeedback.assessment_id,
+        ).filter(
+            Assessment.assignment_id == assignment_id
+        )
 
     if filter_type == "allowed":
         query = query.filter(
@@ -214,8 +210,22 @@ def list_review_analysis(
 def get_review_case(
     db: Session,
     case_id: str,
+    assignment_id: str | None = None,
 ) -> dict[str, Any] | None:
-    case = db.get(ReviewCase, case_id)
+
+    query = db.query(ReviewCase).filter(
+        ReviewCase.case_id == case_id
+    )
+
+    if assignment_id is not None:
+        query = query.join(
+            Assessment,
+            Assessment.assessment_id == ReviewCase.assessment_id,
+        ).filter(
+            Assessment.assignment_id == assignment_id
+        )
+
+    case = query.first()
 
     if case is None:
         return None
@@ -228,8 +238,22 @@ def resolve_review_case(
     case_id: str,
     decision: str,
     reason: str | None = None,
+    assignment_id: str | None = None,
 ) -> dict[str, Any]:
-    case = db.get(ReviewCase, case_id)
+
+    query = db.query(ReviewCase).filter(
+        ReviewCase.case_id == case_id
+    )
+
+    if assignment_id is not None:
+        query = query.join(
+            Assessment,
+            Assessment.assessment_id == ReviewCase.assessment_id,
+        ).filter(
+            Assessment.assignment_id == assignment_id
+        )
+
+    case = query.first()
 
     if case is None:
         raise ValueError("Review case not found.")

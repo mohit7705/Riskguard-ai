@@ -19,6 +19,7 @@ import {
 import './ReportDashboard.css'
 
 type ReviewAnalysisProps = {
+  assignmentNumber: string
   filter: ReviewAnalysisFilter
 }
 
@@ -211,6 +212,7 @@ function formatDateTime(iso: string | null): string {
 }
 
 function ReviewAnalysis({
+  assignmentNumber,
   filter,
 }: ReviewAnalysisProps) {
   const [records, setRecords] = useState<FeedbackRecord[]>([])
@@ -248,6 +250,7 @@ function ReviewAnalysis({
 
     try {
       const response = await getReviewAnalysis({
+        assignmentNumber,
         filter,
         page: targetPage,
         pageSize: PAGE_SIZE,
@@ -285,7 +288,7 @@ function ReviewAnalysis({
     setSelectedCase(null)
     void loadAnalysis(1, search)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, search])
+  }, [filter, search, assignmentNumber])
 
   const goToPage = (nextPage: number) => {
     if (
@@ -320,6 +323,7 @@ function ReviewAnalysis({
     try {
       const reviewCase = await getReviewCase(
         record.case_id,
+        assignmentNumber,
       )
 
       setSelectedCase(reviewCase)
@@ -365,6 +369,7 @@ function ReviewAnalysis({
     try {
       await decideReviewCase(
         selectedRecord.case_id,
+        assignmentNumber,
         decision,
         trimmedReason,
       )

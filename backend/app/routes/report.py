@@ -1,4 +1,5 @@
 import json
+import time
 from collections import Counter
 from datetime import date
 from pathlib import Path
@@ -8,7 +9,8 @@ from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from backend.app.db.database import get_db
-from backend.app.db.models import RiskFeedback, ReviewCase
+from backend.app.db.models import Assessment, RiskFeedback, ReviewCase
+from backend.app.services.assessment import get_assignment_by_number
 
 
 router = APIRouter(
@@ -177,6 +179,7 @@ def load_threshold_curve() -> list[dict] | None:
 
 @router.get("/dashboard")
 def get_dashboard(
+    assignment_number: str = Query(...),
     db: Session = Depends(get_db),
     selected_date: date | None = Query(
         default=None,
@@ -190,96 +193,167 @@ def get_dashboard(
     only for that date. Overall totals remain available separately.
     """
 
+    assignment = get_assignment_by_number(
+        db=db,
+        assignment_number=assignment_number,
+    )
+
+    if assignment is None:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=404,
+            detail=f"Assignment not found: {assignment_number}",
+        )
+
+    assignment_id = assignment.assignment_id
+
+    profile_start = time.perf_counter()
+
+    def mark(label: str) -> None:
+        elapsed = (time.perf_counter() - profile_start) * 1000
+        print(f"[DASHBOARD PROFILE] {label}: {elapsed:.2f} ms")
+
     # ---------------------------------------------------------
-    # Base query
+    # Summary + risk distribution
+    #
+    # Combine both aggregations into one PostgreSQL query to
+    # reduce a remote Neon round trip.
     # ---------------------------------------------------------
 
-    feedback_query = db.query(RiskFeedback)
+    feedback_query = (
+        db.query(RiskFeedback)
+        .join(
+            Assessment,
+            Assessment.assessment_id == RiskFeedback.assessment_id,
+        )
+        .filter(
+            Assessment.assignment_id == assignment_id
+        )
+    )
 
     if selected_date is not None:
         feedback_query = feedback_query.filter(
             func.date(RiskFeedback.created_at) == selected_date
         )
 
-    # ---------------------------------------------------------
-    # Summary for selected date / current scope
-    # ---------------------------------------------------------
-
-    total_reviewed = feedback_query.count()
-
-    allowed = (
-        feedback_query
-        .filter(RiskFeedback.model_decision == "ALLOW")
-        .count()
-    )
-
-    blocked = (
-        feedback_query
-        .filter(RiskFeedback.model_decision == "BLOCK")
-        .count()
-    )
-
-    pending_review = (
-        db.query(ReviewCase)
-        .filter(ReviewCase.status == "OPEN")
-        .count()
-    )
-
-    if selected_date is not None:
-        pending_review = (
-            db.query(ReviewCase)
-            .filter(
-                ReviewCase.status == "OPEN",
-                func.date(ReviewCase.created_at) == selected_date,
-            )
-            .count()
-        )
-
-    abuse_rate = (
-        feedback_query
-        .with_entities(
-            func.avg(RiskFeedback.abuse_probability)
-        )
-        .scalar()
-    )
-
-    # ---------------------------------------------------------
-    # Risk distribution
-    # ---------------------------------------------------------
-
-    risk_distribution = {}
-
-    risk_rows = (
+    summary_rows = (
         feedback_query
         .with_entities(
             RiskFeedback.risk_level,
-            func.count(RiskFeedback.id),
+            func.count(RiskFeedback.id).label("risk_count"),
+            func.sum(
+                case(
+                    (
+                        RiskFeedback.model_decision == "ALLOW",
+                        1,
+                    ),
+                    else_=0,
+                )
+            ).label("allowed"),
+            func.sum(
+                case(
+                    (
+                        RiskFeedback.model_decision == "BLOCK",
+                        1,
+                    ),
+                    else_=0,
+                )
+            ).label("blocked"),
+            func.avg(
+                RiskFeedback.abuse_probability
+            ).label("abuse_rate"),
         )
         .group_by(RiskFeedback.risk_level)
         .all()
     )
 
-    for level, count in risk_rows:
-        risk_distribution[level] = count
+    total_reviewed = sum(
+        int(row.risk_count or 0)
+        for row in summary_rows
+    )
+
+    allowed = int(
+        sum(int(row.allowed or 0) for row in summary_rows)
+    )
+
+    blocked = int(
+        sum(int(row.blocked or 0) for row in summary_rows)
+    )
+
+    weighted_abuse_sum = sum(
+        float(row.abuse_rate or 0) * int(row.risk_count or 0)
+        for row in summary_rows
+    )
+
+    abuse_rate = (
+        weighted_abuse_sum / total_reviewed
+        if total_reviewed
+        else 0.0
+    )
+
+    risk_distribution = {
+        row.risk_level: int(row.risk_count or 0)
+        for row in summary_rows
+        if row.risk_level is not None
+    }
+
+    mark("summary + risk distribution")
+
+    # ---------------------------------------------------------
+    # Pending review
+    # ---------------------------------------------------------
+
+    pending_query = (
+        db.query(ReviewCase)
+        .join(
+            Assessment,
+            Assessment.assessment_id == ReviewCase.assessment_id,
+        )
+        .filter(
+            ReviewCase.status == "OPEN",
+            Assessment.assignment_id == assignment_id,
+        )
+    )
+
+    if selected_date is not None:
+        pending_query = pending_query.filter(
+            func.date(ReviewCase.created_at) == selected_date
+        )
+
+    pending_review = pending_query.count()
+    mark("pending review")
 
     # ---------------------------------------------------------
     # Decision trend
+    #
+    # Aggregate by date and decision in PostgreSQL instead
+    # of loading every feedback row into Python.
     # ---------------------------------------------------------
-
-    decision_map = {}
 
     trend_rows = (
         feedback_query
         .with_entities(
-            RiskFeedback.created_at,
+            func.date(RiskFeedback.created_at).label("report_date"),
+            RiskFeedback.model_decision,
+            func.count(RiskFeedback.id).label("count"),
+        )
+        .group_by(
+            func.date(RiskFeedback.created_at),
             RiskFeedback.model_decision,
         )
-        .order_by(RiskFeedback.created_at)
+        .order_by(func.date(RiskFeedback.created_at))
         .all()
     )
 
-    for created_at, decision in trend_rows:
-        date_key = created_at.date().isoformat()
+    decision_map = {}
+
+    for row in trend_rows:
+        date_key = (
+            row.report_date.isoformat()
+            if hasattr(row.report_date, "isoformat")
+            else str(row.report_date)
+        )
 
         if date_key not in decision_map:
             decision_map[date_key] = {
@@ -290,16 +364,19 @@ def get_dashboard(
                 "review": 0,
             }
 
-        decision_map[date_key]["total"] += 1
+        count = int(row.count or 0)
 
-        if decision == "ALLOW":
-            decision_map[date_key]["allow"] += 1
-        elif decision == "BLOCK":
-            decision_map[date_key]["block"] += 1
+        decision_map[date_key]["total"] += count
+
+        if row.model_decision == "ALLOW":
+            decision_map[date_key]["allow"] += count
+        elif row.model_decision == "BLOCK":
+            decision_map[date_key]["block"] += count
         else:
-            decision_map[date_key]["review"] += 1
+            decision_map[date_key]["review"] += count
 
     decision_trend = list(decision_map.values())
+    mark("decision trend")
 
     # ---------------------------------------------------------
     # Daily assessment data
@@ -340,6 +417,14 @@ def get_dashboard(
                 )
             ).label("blocked"),
         )
+        .select_from(RiskFeedback)
+        .join(
+            Assessment,
+            Assessment.assessment_id == RiskFeedback.assessment_id,
+        )
+        .filter(
+            Assessment.assignment_id == assignment_id
+        )
         .group_by(func.date(RiskFeedback.created_at))
         .order_by(func.date(RiskFeedback.created_at))
         .all()
@@ -359,32 +444,39 @@ def get_dashboard(
         }
         for row in daily_rows
     ]
+    mark("daily data")
 
     # ---------------------------------------------------------
     # Top risk reasons
+    #
+    # PostgreSQL extracts and groups the JSON return_reason
+    # instead of loading every input_data object into Python.
     # ---------------------------------------------------------
 
-    reasons = Counter()
+    return_reason = RiskFeedback.input_data.op("->>")("return_reason")
 
-    feedback_rows = (
+    reason_rows = (
         feedback_query
-        .with_entities(RiskFeedback.input_data)
+        .with_entities(
+            return_reason.label("reason"),
+            func.count(RiskFeedback.id).label("count"),
+        )
+        .filter(return_reason.is_not(None))
+        .filter(return_reason != "")
+        .group_by(return_reason)
+        .order_by(func.count(RiskFeedback.id).desc())
+        .limit(5)
         .all()
     )
 
-    for row in feedback_rows:
-        data = row[0] or {}
-
-        if data.get("return_reason"):
-            reasons[data["return_reason"]] += 1
-
     top_risk_reasons = [
         {
-            "reason": reason,
-            "count": count,
+            "reason": row.reason,
+            "count": int(row.count or 0),
         }
-        for reason, count in reasons.most_common(5)
+        for row in reason_rows
     ]
+    mark("risk reasons")
 
     # ---------------------------------------------------------
     # Existing model / financial reporting
@@ -406,6 +498,8 @@ def get_dashboard(
     # Response
     # ---------------------------------------------------------
 
+    mark("before response")
+
     return {
         "selected_date": (
             selected_date.isoformat()
@@ -419,7 +513,7 @@ def get_dashboard(
             "allowed": allowed,
             "blocked": blocked,
             "abuse_rate": round(
-                (abuse_rate or 0) * 100,
+                abuse_rate * 100,
                 2,
             ),
         },

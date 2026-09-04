@@ -2703,3 +2703,123 @@ select.field-input {
   font-size: 13px;
   line-height: 1.5;
 }
+/* Assignment entry / welcome screen */
+
+.entry-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background: var(--bg);
+}
+
+.entry-card {
+  width: min(520px, 100%);
+  padding: 40px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(24, 39, 75, 0.08);
+}
+
+.entry-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 42px;
+}
+
+.entry-brand .brand-mark {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  font-size: 21px;
+  font-weight: 800;
+}
+
+.entry-brand h1 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.entry-brand span {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.entry-heading h2 {
+  margin: 7px 0 8px;
+  color: var(--text);
+  font-size: 28px;
+}
+
+.entry-heading p:not(.eyebrow) {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.entry-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.entry-form label {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.entry-form input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 13px 14px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  outline: none;
+}
+
+.entry-form input:focus {
+  border-color: #7ca5df;
+  box-shadow: 0 0 0 3px rgba(43, 95, 176, 0.08);
+}
+
+.entry-form button {
+  margin-top: 8px;
+  padding: 13px 16px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--text);
+  color: white;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.entry-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.entry-secondary {
+  background: transparent !important;
+  color: var(--text-muted) !important;
+  border: 1px solid var(--border) !important;
+}
+
+.entry-error {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--red-bg);
+  color: var(--red);
+  font-size: 13px;
+}

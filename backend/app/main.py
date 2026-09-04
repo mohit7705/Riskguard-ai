@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.routes.risk import router as risk_router
 from backend.app.routes.report import router as report_router
-
+from backend.app.routes.assignment import router as assignment_router
 
 app = FastAPI(
     title="RiskGuard AI",
@@ -26,7 +26,7 @@ app.add_middleware(
 
 app.include_router(risk_router)
 app.include_router(report_router)
-
+app.include_router(assignment_router)
 
 @app.get("/health")
 def health_check():
