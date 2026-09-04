@@ -4,6 +4,7 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Query,
     UploadFile,
 )
 from sqlalchemy.orm import Session
@@ -28,6 +29,7 @@ from backend.app.schemas.risk import (
 from backend.app.services.review_queue import (
     create_review_case,
     list_review_cases,
+    list_review_analysis,
     get_review_case,
     resolve_review_case,
 )
@@ -290,13 +292,49 @@ async def assess_return_image(
     response_model=ReviewCaseListResponse,
 )
 def get_review_queue(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    search: str | None = Query(None),
     db: Session = Depends(get_db),
 ) -> ReviewCaseListResponse:
 
+    result = list_review_cases(
+        db=db,
+        page=page,
+        page_size=page_size,
+        search=search,
+    )
+
     return ReviewCaseListResponse(
         status="success",
-        cases=list_review_cases(db),
+        **result,
     )
+
+
+@router.get(
+    "/review-analysis",
+    response_model=FeedbackListResponse,
+)
+def get_review_analysis(
+    filter_type: str = Query("all"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    search: str | None = Query(None),
+    db: Session = Depends(get_db),
+) -> dict:
+
+    result = list_review_analysis(
+        db=db,
+        filter_type=filter_type,
+        page=page,
+        page_size=page_size,
+        search=search,
+    )
+
+    return {
+        "status": "success",
+        **result,
+    }
 
 
 @router.get(

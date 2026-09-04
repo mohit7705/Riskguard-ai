@@ -72,11 +72,23 @@ export type UserNetwork = {
 export type ReviewCaseListResponse = {
   status: string
   cases: ReviewCase[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
+  has_next: boolean
+  has_prev: boolean
 }
 
 export type FeedbackListResponse = {
   status: string
   records: FeedbackRecord[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
+  has_next: boolean
+  has_prev: boolean
 }
 
 export type RiskSignal = {
@@ -126,9 +138,33 @@ async function request<T>(
   return body as T
 }
 
-export function getReviewQueue(): Promise<ReviewCaseListResponse> {
+export type ReviewQueueParams = {
+  page?: number
+  pageSize?: number
+  search?: string
+}
+
+export function getReviewQueue(
+  params?: ReviewQueueParams,
+): Promise<ReviewCaseListResponse> {
+  const query = new URLSearchParams()
+
+  if (params?.page) {
+    query.set('page', String(params.page))
+  }
+
+  if (params?.pageSize) {
+    query.set('page_size', String(params.pageSize))
+  }
+
+  if (params?.search) {
+    query.set('search', params.search)
+  }
+
+  const queryString = query.toString()
+
   return request<ReviewCaseListResponse>(
-    '/api/v1/risk/review-queue',
+    `/api/v1/risk/review-queue${queryString ? `?${queryString}` : ''}`,
   )
 }
 
@@ -160,6 +196,47 @@ export function decideReviewCase(
 export function getFeedback(): Promise<FeedbackListResponse> {
   return request<FeedbackListResponse>(
     '/api/v1/risk/feedback',
+  )
+}
+
+export type ReviewAnalysisFilter =
+  | 'all'
+  | 'pending'
+  | 'allowed'
+  | 'blocked'
+
+export type ReviewAnalysisParams = {
+  filter?: ReviewAnalysisFilter
+  page?: number
+  pageSize?: number
+  search?: string
+}
+
+export function getReviewAnalysis(
+  params?: ReviewAnalysisParams,
+): Promise<FeedbackListResponse> {
+  const query = new URLSearchParams()
+
+  if (params?.filter) {
+    query.set('filter_type', params.filter)
+  }
+
+  if (params?.page) {
+    query.set('page', String(params.page))
+  }
+
+  if (params?.pageSize) {
+    query.set('page_size', String(params.pageSize))
+  }
+
+  if (params?.search) {
+    query.set('search', params.search)
+  }
+
+  const queryString = query.toString()
+
+  return request<FeedbackListResponse>(
+    `/api/v1/risk/review-analysis${queryString ? `?${queryString}` : ''}`,
   )
 }
 

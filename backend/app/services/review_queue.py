@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
-from backend.app.db.models import ReviewCase
+from backend.app.db.models import RiskFeedback, ReviewCase
 
 
 def create_review_case(
@@ -32,20 +32,183 @@ def create_review_case(
     return _serialize_review_case(case)
 
 
+def build_review_case(
+    prediction: dict[str, Any],
+    data: dict[str, Any],
+) -> ReviewCase:
+    """
+    Build (but do NOT add/commit) a ReviewCase ORM object.
+
+    Use this in bulk/batch flows where many cases are created in one
+    request — the caller is responsible for db.add_all(...) and a
+    single db.commit() across the whole batch (or in chunks), instead
+    of one commit per case as create_review_case() does.
+
+    Sets prediction['review_case_id'] in place, same as
+    create_review_case() does, so downstream code (e.g. building the
+    matching RiskFeedback row) can rely on it being present.
+    """
+
+    case_id = f"RG-{uuid4().hex[:10].upper()}"
+
+    prediction["review_case_id"] = case_id
+
+    return ReviewCase(
+        case_id=case_id,
+        status="OPEN",
+        prediction=prediction,
+        data=data,
+    )
+
+
 def list_review_cases(
     db: Session,
-) -> list[dict[str, Any]]:
+    page: int = 1,
+    page_size: int = 20,
+    search: str | None = None,
+) -> dict[str, Any]:
+    """
+    Return a page of OPEN review cases, ordered oldest-first, with
+    pagination metadata. If `search` is provided, filters case_id
+    with a case-insensitive partial match (e.g. "F7D3" matches
+    "RG-F7D32B73A7").
+    """
+
+    query = db.query(ReviewCase).filter(ReviewCase.status == "OPEN")
+
+    if search:
+        trimmed = search.strip()
+
+        if trimmed:
+            query = query.filter(
+                ReviewCase.case_id.ilike(f"%{trimmed}%")
+            )
+
+    total = query.count()
+
+    total_pages = max(1, (total + page_size - 1) // page_size)
+
+    # Clamp so an out-of-range page (e.g. requesting page 9 after a
+    # search narrows the results) doesn't return an empty page by
+    # accident — it snaps back to the last valid page instead.
+    page = max(1, min(page, total_pages))
+
     cases = (
-        db.query(ReviewCase)
-        .filter(ReviewCase.status == "OPEN")
+        query
         .order_by(ReviewCase.created_at.asc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
         .all()
     )
 
-    return [
-        _serialize_review_case(case)
-        for case in cases
-    ]
+    return {
+        "cases": [
+            _serialize_review_case(case)
+            for case in cases
+        ],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+        "has_next": page < total_pages,
+        "has_prev": page > 1,
+    }
+
+
+def list_review_analysis(
+    db: Session,
+    filter_type: str = "all",
+    page: int = 1,
+    page_size: int = 10,
+    search: str | None = None,
+) -> dict[str, Any]:
+    """
+    Return paginated RiskFeedback records for the Review Analysis
+    dashboard.
+
+    Filters:
+    - all: every prediction
+    - pending: predictions linked to an OPEN ReviewCase
+    - allowed: model decision ALLOW
+    - blocked: model decision BLOCK
+
+    Search performs a case-insensitive partial match on case_id.
+    """
+
+    filter_type = filter_type.lower().strip()
+
+    if filter_type not in {
+        "all",
+        "pending",
+        "allowed",
+        "blocked",
+    }:
+        raise ValueError(
+            "filter_type must be one of: all, pending, allowed, blocked."
+        )
+
+    query = db.query(RiskFeedback)
+
+    if filter_type == "allowed":
+        query = query.filter(
+            RiskFeedback.model_decision == "ALLOW"
+        )
+
+    elif filter_type == "blocked":
+        query = query.filter(
+            RiskFeedback.model_decision == "BLOCK"
+        )
+
+    elif filter_type == "pending":
+        query = query.join(
+            ReviewCase,
+            ReviewCase.case_id == RiskFeedback.case_id,
+        ).filter(
+            ReviewCase.status == "OPEN"
+        )
+
+    if search:
+        trimmed = search.strip()
+
+        if trimmed:
+            query = query.filter(
+                RiskFeedback.case_id.ilike(
+                    f"%{trimmed}%"
+                )
+            )
+
+    total = query.count()
+
+    total_pages = max(
+        1,
+        (total + page_size - 1) // page_size,
+    )
+
+    page = max(
+        1,
+        min(page, total_pages),
+    )
+
+    records = (
+        query
+        .order_by(RiskFeedback.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    return {
+        "records": [
+            _serialize_feedback_record(record)
+            for record in records
+        ],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+        "has_next": page < total_pages,
+        "has_prev": page > 1,
+    }
 
 
 def get_review_case(
@@ -97,6 +260,31 @@ def clear_review_cases(
 ) -> None:
     db.query(ReviewCase).delete()
     db.commit()
+
+
+def _serialize_feedback_record(
+    record: RiskFeedback,
+) -> dict[str, Any]:
+    return {
+        "id": record.id,
+        "case_id": record.case_id,
+        "prediction": record.prediction,
+        "predicted_label": record.predicted_label,
+        "abuse_probability": record.abuse_probability,
+        "risk_score": record.risk_score,
+        "risk_level": record.risk_level,
+        "model_decision": record.model_decision,
+        "analyst_decision": record.analyst_decision,
+        "actual_outcome": record.actual_outcome,
+        "analyst_reason": record.analyst_reason,
+        "input_data": record.input_data,
+        "created_at": record.created_at.isoformat(),
+        "outcome_recorded_at": (
+            record.outcome_recorded_at.isoformat()
+            if record.outcome_recorded_at
+            else None
+        ),
+    }
 
 
 def _serialize_review_case(

@@ -11,6 +11,7 @@ import SingleResult from './components/SingleResult'
 import ReturnInput from './components/ReturnInput'
 import NetworkResult from './components/NetworkResult'
 import ReportDashboard from './components/ReportDashboard'
+import ReviewAnalysis from './components/ReviewAnalysis'
 import {
   getUserNetwork,
   type UserNetwork,
@@ -77,8 +78,11 @@ const sampleSingleData = `{
 
 function App() {
   const [activePage, setActivePage] = useState<
-    'report' | 'single' | 'bulk' | 'network'
+    'report' | 'review' | 'single' | 'bulk' | 'network'
   >('report')
+  const [reviewFilter, setReviewFilter] = useState<
+    'all' | 'pending' | 'allowed' | 'blocked'
+  >('all')
   const [mode, setMode] = useState<'single' | 'batch'>('single')
   const [batchInputMode, setBatchInputMode] = useState<'csv' | 'json'>('csv')
 
@@ -335,7 +339,21 @@ function App() {
             <span className="nav-icon">▣</span>
             <span>
               <strong>Report</strong>
-              <small>Review queue &amp; decisions</small>
+              <small>Summary &amp; charts</small>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            className={`nav-item ${
+              activePage === 'review' ? 'active' : ''
+            }`}
+            onClick={() => setActivePage('review')}
+          >
+            <span className="nav-icon">☑</span>
+            <span>
+              <strong>Review Analysis</strong>
+              <small>Model insights &amp; review queue</small>
             </span>
           </button>
 
@@ -401,7 +419,16 @@ function App() {
 
       <main className="main-content">
         {activePage === 'report' && (
-          <ReportDashboard/>
+          <ReportDashboard
+            onReviewFilter={(filter) => {
+              setReviewFilter(filter)
+              setActivePage('review')
+            }}
+          />
+        )}
+
+        {activePage === 'review' && (
+          <ReviewAnalysis filter={reviewFilter} />
         )}
 
         {activePage === 'single' && (

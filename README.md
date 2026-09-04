@@ -17,7 +17,7 @@ Return Data
      ↓
 Feature Engineering
      ↓
-ML Risk Prediction (Calibrated XGBoost)
+ML Risk Prediction (XGBoost)
      ↓
 Risk Score (0–100) + Risk Level
      ↓
@@ -134,23 +134,23 @@ Supports both CSV upload and developer JSON input for evaluating multiple return
 
 ### Risk Reporting
 
-The reporting dashboard provides a merchant-facing view of the whole system: total reviewed returns, pending review count, allowed/blocked counts, abuse rate, risk distribution, decision trends, top return reasons, model performance, threshold trade-off analysis, and financial impact — all backed by live data, not static mockups.
+The reporting dashboard provides a merchant-facing view of the whole system: total assessments, pending review count, automated model allowed/blocked outcomes, abuse rate, risk distribution, decision trends, top return reasons, model performance, threshold trade-off analysis, and financial impact — all backed by live data, not static mockups.
 
 ---
 
 ## 3. Machine Learning
 
-The production inference model is a **calibrated XGBoost classifier**.
+The production inference model is a **raw XGBoost classifier (`XGBClassifier`)**.
 
 | Property | Value |
 |---|---|
-| Model | CalibratedXGBClassifier |
+| Model | XGBClassifier |
 | Feature count | 34 |
 | Classes | 0 (Legitimate), 1 (Abusive) |
 
-Calibration matters here specifically because raw gradient-boosted probabilities are often poorly calibrated — without it, a "70% abuse probability" wouldn't reliably mean what it says, which would undermine both the risk-score display and the cost-based threshold selection described in [Section 7](#7-threshold-optimization).
+The production model is **not probability-calibrated**. Its raw XGBoost abuse probability is used by the business decision layer together with the locked production threshold of **0.10**.
 
-A Random Forest baseline was trained alongside XGBoost for comparison; XGBoost was selected for production based on stronger ROC-AUC and F1 on the same held-out test set.
+A Random Forest baseline was trained alongside XGBoost for comparison; XGBoost was selected for production based on stronger ROC-AUC and F1 on the same held-out evaluation workflow.
 
 ---
 
@@ -195,31 +195,32 @@ Categorical fields (`order_category`, `return_reason`) are one-hot encoded consi
 
 ## 6. Model Evaluation
 
-Evaluated on a held-out test set of **2,000 rows**, at the production decision threshold of **0.70**:
+Evaluated on a held-out test set of **2,000 rows**, using the locked production decision threshold of **0.10**:
 
 | Metric | Score |
 |---|---|
-| Precision | 96.38% |
+| Accuracy | 98.90% |
+| Precision | 95.00% |
 | Recall | 99.75% |
-| F1 Score | 98.03% |
-| PR-AUC | 99.42% |
-| ROC-AUC | 99.87% |
+| F1 Score | 97.32% |
+| PR-AUC | 99.60% |
+| ROC-AUC | 99.90% |
 
 **Confusion matrix:**
 
 | | Predicted Legitimate | Predicted Abusive |
 |---|---|---|
-| **Actual Legitimate** | 1585 | 15 |
+| **Actual Legitimate** | 1579 | 21 |
 | **Actual Abusive** | 1 | 399 |
 
 | | Count |
 |---|---|
 | True Positives | 399 |
-| True Negatives | 1585 |
-| False Positives | 15 |
+| True Negatives | 1579 |
+| False Positives | 21 |
 | False Negatives | 1 |
 
-These are real numbers computed on held-out data, not spot checks — every threshold in [Section 7](#7-threshold-optimization) was evaluated against this same test set.
+The threshold was selected on the separate 1,600-row validation set and the 2,000-row test set was reserved for final evaluation. These are held-out evaluation results, not spot checks.
 
 ---
 
@@ -240,13 +241,21 @@ False Negative Cost = 5
 Business Cost = (False Positives × FP Cost) + (False Negatives × FN Cost)
 ```
 
-The threshold minimizing this cost across 17 tested values (0.10–0.90) is selected automatically. Currently:
+The threshold minimizing this cost across the tested candidate values is selected on the **1,600-row validation set**, while the 2,000-row test set is reserved for final evaluation. Currently:
 
 | Threshold | False Positives | False Negatives | Business Cost |
 |---|---|---|---|
-| **0.70 (selected)** | 15 | 1 | **20** |
+| **0.10 (selected)** | 14 | 0 | **14** |
 
-This full threshold sweep — every candidate value with its precision, recall, F1, and cost — is persisted to `backend/ml/models/risk_threshold_report.json` and surfaced live on the Report dashboard as a threshold-vs-cost tradeoff chart, so the choice of 0.70 is auditable rather than asserted. The same threshold is loaded into the production model bundle and returned as `decision_threshold` on every prediction, so the API's live decisions and the dashboard's reported metrics are guaranteed to reflect the same cutoff.
+The threshold sweep is persisted to `backend/ml/models/risk_threshold_report.json` and surfaced live on the Report dashboard as a threshold-vs-cost tradeoff chart, making the selection auditable. The selected threshold is loaded into the production model bundle and returned as `decision_threshold` on predictions, keeping live decisions aligned with the production configuration.
+
+**Production decision mapping:**
+
+| Risk Level | Decision |
+|---|---|
+| MINIMAL / LOW | ALLOW |
+| MEDIUM / HIGH | REVIEW |
+| CRITICAL | BLOCK |
 
 ---
 
@@ -274,6 +283,7 @@ Built with **FastAPI**. Interactive documentation available at `http://127.0.0.1
 |---|---|---|
 | POST | `/api/v1/risk/predict` | Single return risk prediction |
 | POST | `/api/v1/risk/predict/batch` | Batch risk prediction |
+| POST | `/api/v1/risk/vision-assess` | Optional image-based evidence assessment |
 | GET | `/api/v1/risk/review-queue` | List open review cases |
 | GET | `/api/v1/risk/review-queue/{case_id}` | Get one review case |
 | POST | `/api/v1/risk/review-queue/{case_id}/decision` | Submit analyst decision |
@@ -293,7 +303,7 @@ Built with **React, TypeScript, Vite, Recharts, and Lucide React**.
 
 | Page | Capabilities |
 |---|---|
-| **Report** | KPI cards, risk distribution, decision trends, top risk reasons, model performance, financial impact, threshold tradeoff chart, review queue |
+| **Report** | KPI cards, risk distribution, decision trends, top risk reasons, model performance, financial impact, threshold tradeoff chart, Review Queue, Review Analysis |
 | **Single Assessment** | Guided form (grouped, labeled fields) or raw developer JSON, live risk assessment, decision + risk signals |
 | **Bulk Assessment** | CSV upload or developer JSON, batch summary, per-record decisions |
 | **Network Analysis** | Enter a user ID, inspect connected users/devices/addresses/payment fingerprints |
@@ -421,7 +431,7 @@ Successfully compiles with TypeScript project references and a Vite production b
   "risk_level": "CRITICAL",
   "decision": "BLOCK",
   "action": "BLOCK_RETURN",
-  "decision_threshold": 0.70
+  "decision_threshold": 0.10
 }
 ```
 
@@ -450,7 +460,7 @@ This is a hackathon project and should not be interpreted as a production fraud 
 - False-positive friction is currently a normalized unit rather than a calibrated rupee cost, pending real merchant-specific assumptions.
 - Per-case explainability depends on a recoverable XGBoost booster inside the loaded model bundle; if none is found, the system falls back to static global feature importance for that request.
 - Production deployment, authentication, monitoring infrastructure, and real merchant integrations would require additional engineering.
-- Real-world calibration would require validated production outcomes, not synthetic labels.
+- The production XGBoost probabilities are raw model probabilities rather than calibrated probabilities; probability calibration would require validated production outcomes and additional calibration work.
 
 ---
 

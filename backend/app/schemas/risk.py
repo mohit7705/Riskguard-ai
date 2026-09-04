@@ -107,6 +107,12 @@ class ReviewCaseResponse(BaseModel):
 class ReviewCaseListResponse(BaseModel):
     status: str
     cases: list[ReviewCaseResponse]
+    total: int = 0
+    page: int = 1
+    page_size: int = 20
+    total_pages: int = 1
+    has_next: bool = False
+    has_prev: bool = False
 
 
 class ReviewDecisionRequest(BaseModel):
@@ -132,6 +138,12 @@ class FeedbackResponse(BaseModel):
 class FeedbackListResponse(BaseModel):
     status: str
     records: list[FeedbackResponse]
+    total: int = 0
+    page: int = 1
+    page_size: int = 10
+    total_pages: int = 1
+    has_next: bool = False
+    has_prev: bool = False
 
 
 class ActualOutcomeRequest(BaseModel):

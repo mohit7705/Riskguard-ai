@@ -7,7 +7,6 @@ import {
   ShieldAlert,
   Download,
 } from "lucide-react"
-import ReviewQueue from "./ReviewQueue"
 import ReportCharts from "./ReportCharts"
 import ModelInsights from "./ModelInsights"
 import ThresholdCurve from "./ThresholdCurve"
@@ -174,7 +173,15 @@ function downloadCsv(filename: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-function ReportDashboard() {
+type ReviewFilter = 'all' | 'pending' | 'allowed' | 'blocked'
+
+type ReportDashboardProps = {
+  onReviewFilter: (filter: ReviewFilter) => void
+}
+
+function ReportDashboard({
+  onReviewFilter,
+}: ReportDashboardProps) {
   const [report, setReport] =
     useState<ReportDashboardResponse | null>(null);
 
@@ -244,17 +251,27 @@ function ReportDashboard() {
       </div>
 
       <div className="report-cards">
-        <div className="report-card">
+        <div
+          className="report-card"
+          role="button"
+          tabIndex={0}
+          onClick={() => onReviewFilter('all')}
+        >
           <div className="report-card-icon blue">
             <ShieldCheck size={20} strokeWidth={2.2} />
           </div>
           <div className="report-card-body">
-            <span>Total Reviewed</span>
+            <span>Total Assessments</span>
             <h2>{report?.summary.total_reviewed ?? "-"}</h2>
           </div>
         </div>
 
-        <div className="report-card">
+        <div
+          className="report-card"
+          role="button"
+          tabIndex={0}
+          onClick={() => onReviewFilter('pending')}
+        >
           <div className="report-card-icon amber">
             <AlertTriangle size={20} strokeWidth={2.2} />
           </div>
@@ -264,22 +281,32 @@ function ReportDashboard() {
           </div>
         </div>
 
-        <div className="report-card">
+        <div
+          className="report-card"
+          role="button"
+          tabIndex={0}
+          onClick={() => onReviewFilter('allowed')}
+        >
           <div className="report-card-icon green">
             <CheckCircle2 size={20} strokeWidth={2.2} />
           </div>
           <div className="report-card-body">
-            <span>Allowed</span>
+            <span>Model Allowed</span>
             <h2>{report?.summary.allowed ?? "-"}</h2>
           </div>
         </div>
 
-        <div className="report-card">
+        <div
+          className="report-card"
+          role="button"
+          tabIndex={0}
+          onClick={() => onReviewFilter('blocked')}
+        >
           <div className="report-card-icon red">
             <Ban size={20} strokeWidth={2.2} />
           </div>
           <div className="report-card-body">
-            <span>Blocked</span>
+            <span>Model Blocked</span>
             <h2>{report?.summary.blocked ?? "-"}</h2>
           </div>
         </div>
@@ -313,10 +340,6 @@ function ReportDashboard() {
       />
 
       <ThresholdCurve curve={report?.threshold_curve} />
-
-      <div className="report-review">
-        <ReviewQueue />
-      </div>
     </div>
   );
 }

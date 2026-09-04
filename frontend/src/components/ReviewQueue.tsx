@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { RefreshCw, Search, Clock, CheckCircle2, XCircle } from 'lucide-react'
+import { RefreshCw, Search, Clock, CheckCircle2, XCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   decideReviewCase,
   getReviewCase,
@@ -18,6 +18,8 @@ type DataFieldDef = {
   label: string
   format: 'currency' | 'percent' | 'number' | 'hours' | 'days' | 'boolean' | 'text'
 }
+
+const PAGE_SIZE = 10
 
 const TRANSACTION_FIELDS: DataFieldDef[] = [
   { key: 'order_category', label: 'Order Category', format: 'text' },
@@ -124,18 +126,38 @@ function ReviewQueue({
   const [error, setError] = useState('')
   const [reason, setReason] = useState('')
 
-  const loadQueue = async () => {
+  // Search box value (updates on every keystroke) vs. the debounced
+  // value actually sent to the API, so we don't fire a request on
+  // every single character typed.
+  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch] = useState('')
+
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+  const [hasNext, setHasNext] = useState(false)
+  const [hasPrev, setHasPrev] = useState(false)
+
+  const loadQueue = async (
+    targetPage: number = page,
+    targetSearch: string = search,
+  ) => {
     setLoading(true)
     setError('')
 
     try {
-      const response = await getReviewQueue()
+      const response = await getReviewQueue({
+        page: targetPage,
+        pageSize: PAGE_SIZE,
+        search: targetSearch || undefined,
+      })
 
-      setCases(
-        response.cases.filter(
-          (item) => item.status === 'OPEN',
-        ),
-      )
+      setCases(response.cases)
+      setPage(response.page)
+      setTotal(response.total)
+      setTotalPages(response.total_pages)
+      setHasNext(response.has_next)
+      setHasPrev(response.has_prev)
     } catch (err) {
       setError(
         err instanceof Error
@@ -147,9 +169,31 @@ function ReviewQueue({
     }
   }
 
+  // Debounce the search box — wait 400ms after the user stops typing
+  // before updating the actual search term used for the request.
   useEffect(() => {
-    void loadQueue()
-  }, [])
+    const timeout = setTimeout(() => {
+      setSearch(searchInput.trim())
+    }, 400)
+
+    return () => clearTimeout(timeout)
+  }, [searchInput])
+
+  // Reload from page 1 whenever the (debounced) search term changes,
+  // including on initial mount (search starts as '').
+  useEffect(() => {
+    void loadQueue(1, search)
+    setSelectedCase(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search])
+
+  const goToPage = (nextPage: number) => {
+    if (nextPage < 1 || nextPage > totalPages) {
+      return
+    }
+
+    void loadQueue(nextPage, search)
+  }
 
   const handleSelectCase = async (caseId: string) => {
     setDetailLoading(true)
@@ -199,7 +243,7 @@ function ReviewQueue({
       setSelectedCase(null)
       setReason('')
 
-      await loadQueue()
+      await loadQueue(page, search)
 
       onResolved?.()
     } catch (err) {
@@ -227,7 +271,7 @@ function ReviewQueue({
         <button
           className="secondary-button"
           type="button"
-          onClick={() => void loadQueue()}
+          onClick={() => void loadQueue(page, search)}
           disabled={loading}
         >
           <RefreshCw
@@ -236,6 +280,35 @@ function ReviewQueue({
           />
           {loading ? 'Refreshing...' : 'Refresh'}
         </button>
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          margin: '4px 0 16px',
+          padding: '8px 12px',
+          border: '1px solid #e2e5ea',
+          borderRadius: '8px',
+          maxWidth: '360px',
+        }}
+      >
+        <Search size={16} strokeWidth={2} color="#8a94a6" />
+
+        <input
+          type="text"
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          placeholder="Search by case ID (e.g. F7D3)..."
+          style={{
+            border: 'none',
+            outline: 'none',
+            width: '100%',
+            fontSize: '14px',
+            background: 'transparent',
+          }}
+        />
       </div>
 
       {error && (
@@ -260,61 +333,115 @@ function ReviewQueue({
         <div className="empty-state">
           <div className="empty-icon">✓</div>
 
-          <h3>No pending reviews</h3>
+          <h3>
+            {search
+              ? 'No matching cases'
+              : 'No pending reviews'}
+          </h3>
 
           <p>
-            There are currently no open cases requiring
-            analyst action.
+            {search
+              ? `No open cases match "${search}".`
+              : 'There are currently no open cases requiring analyst action.'}
           </p>
         </div>
       )}
 
       {!loading && cases.length > 0 && (
         <div className="review-layout">
-          <div className="review-case-list">
-            {cases.map((reviewCase) => (
-              <button
-                className={`review-case-card ${
-                  selectedCase?.case_id ===
-                  reviewCase.case_id
-                    ? 'selected'
-                    : ''
-                }`}
-                key={reviewCase.case_id}
-                type="button"
-                onClick={() =>
-                  void handleSelectCase(
-                    reviewCase.case_id,
-                  )
-                }
-              >
-                <div className="review-case-top">
-                  <strong>
-                    {reviewCase.case_id}
-                  </strong>
+          <div>
+            <div className="review-case-list">
+              {cases.map((reviewCase) => (
+                <button
+                  className={`review-case-card ${
+                    selectedCase?.case_id ===
+                    reviewCase.case_id
+                      ? 'selected'
+                      : ''
+                  }`}
+                  key={reviewCase.case_id}
+                  type="button"
+                  onClick={() =>
+                    void handleSelectCase(
+                      reviewCase.case_id,
+                    )
+                  }
+                >
+                  <div className="review-case-top">
+                    <strong>
+                      {reviewCase.case_id}
+                    </strong>
 
-                  <span
-                    className={`risk-pill ${reviewCase.prediction.risk_level.toLowerCase()}`}
-                  >
-                    {reviewCase.prediction.risk_level}
-                  </span>
-                </div>
+                    <span
+                      className={`risk-pill ${reviewCase.prediction.risk_level.toLowerCase()}`}
+                    >
+                      {reviewCase.prediction.risk_level}
+                    </span>
+                  </div>
 
-                <div className="review-case-summary">
-                  <span>
-                    {reviewCase.prediction.prediction}
-                  </span>
+                  <div className="review-case-summary">
+                    <span>
+                      {reviewCase.prediction.prediction}
+                    </span>
 
-                  <strong>
-                    {reviewCase.prediction.risk_score}
-                  </strong>
-                </div>
+                    <strong>
+                      {reviewCase.prediction.risk_score}
+                    </strong>
+                  </div>
 
-                <small>
-                  {reviewCase.prediction.action}
-                </small>
-              </button>
-            ))}
+                  <small>
+                    {reviewCase.prediction.action}
+                  </small>
+                </button>
+              ))}
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginTop: '12px',
+                padding: '8px 4px',
+                fontSize: '13px',
+                color: '#5b6472',
+              }}
+            >
+              <span>
+                {total === 0
+                  ? '0 cases'
+                  : `Showing ${(page - 1) * PAGE_SIZE + 1}–${Math.min(
+                      page * PAGE_SIZE,
+                      total,
+                    )} of ${total}`}
+              </span>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => goToPage(page - 1)}
+                  disabled={!hasPrev || loading}
+                  style={{ padding: '4px 8px' }}
+                >
+                  <ChevronLeft size={14} />
+                </button>
+
+                <span>
+                  Page {page} of {totalPages}
+                </span>
+
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => goToPage(page + 1)}
+                  disabled={!hasNext || loading}
+                  style={{ padding: '4px 8px' }}
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="review-detail">
