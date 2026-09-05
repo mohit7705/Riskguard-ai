@@ -20,7 +20,10 @@ def _load_returns() -> pd.DataFrame:
     return pd.read_parquet(RETURNS_PATH)
 
 
-def build_user_network(user_id: str) -> dict[str, Any]:
+def build_user_network(
+    user_id: str,
+    fallback_data: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     Build the network surrounding a user.
 
@@ -29,8 +32,9 @@ def build_user_network(user_id: str) -> dict[str, Any]:
       - address_hash
       - payment_fingerprint
 
-    Return velocity is calculated from the same seven-day
-    relationship logic used by the feature pipeline.
+    The response includes both aggregate network signals and
+    explicit infrastructure evidence so analysts can see the
+    exact identifiers connecting accounts.
     """
 
     users = _load_users()
@@ -55,9 +59,22 @@ def build_user_network(user_id: str) -> dict[str, Any]:
     ]
 
     if target_rows.empty:
-        raise ValueError(f"User not found: {user_id}")
+        if not fallback_data:
+            raise ValueError(f"User not found: {user_id}")
 
-    target = target_rows.iloc[0]
+        # Generated RiskGuard identity.
+        # The uploaded data does not contain raw infrastructure IDs,
+        # so do not invent device/address/payment identifiers.
+        target = pd.Series(
+            {
+                "user_id": user_id,
+                "device_fingerprint": None,
+                "address_hash": None,
+                "payment_fingerprint": None,
+            }
+        )
+    else:
+        target = target_rows.iloc[0]
 
     relationship_columns = {
         "device_fingerprint": "DEVICE",
@@ -68,8 +85,8 @@ def build_user_network(user_id: str) -> dict[str, Any]:
     nodes: dict[str, dict[str, Any]] = {}
     edges: list[dict[str, Any]] = []
     edge_keys: set[tuple[str, str, str]] = set()
+    infrastructure_evidence: list[dict[str, Any]] = []
 
-    # Target user node.
     target_node_id = f"user:{user_id}"
 
     nodes[target_node_id] = {
@@ -85,14 +102,16 @@ def build_user_network(user_id: str) -> dict[str, Any]:
         if pd.isna(value):
             continue
 
+        identifier = str(value)
+
         relationship_node_id = (
-            f"{relationship_type.lower()}:{value}"
+            f"{relationship_type.lower()}:{identifier}"
         )
 
         nodes[relationship_node_id] = {
             "id": relationship_node_id,
             "type": relationship_type,
-            "label": str(value),
+            "label": identifier,
             "is_target": False,
         }
 
@@ -112,16 +131,19 @@ def build_user_network(user_id: str) -> dict[str, Any]:
             )
             edge_keys.add(edge_key)
 
-        # Find all users sharing this infrastructure.
         related_users = users.loc[
             users[column] == value
         ]
+
+        linked_user_ids: list[str] = []
 
         for _, related in related_users.iterrows():
             related_user_id = str(related["user_id"])
 
             if related_user_id == user_id:
                 continue
+
+            linked_user_ids.append(related_user_id)
 
             related_node_id = f"user:{related_user_id}"
 
@@ -148,8 +170,15 @@ def build_user_network(user_id: str) -> dict[str, Any]:
                 )
                 edge_keys.add(related_edge_key)
 
-    # Calculate seven-day return velocity for the target's
-    # shared infrastructure.
+        infrastructure_evidence.append(
+            {
+                "type": relationship_type,
+                "identifier": identifier,
+                "account_count": len(linked_user_ids) + 1,
+                "linked_users": sorted(linked_user_ids),
+            }
+        )
+
     returns = returns.copy()
 
     if "return_requested_at" in returns.columns:
@@ -184,45 +213,92 @@ def build_user_network(user_id: str) -> dict[str, Any]:
 
     velocity: dict[str, int] = {}
 
-    for column, relationship_type in relationship_columns.items():
-        value = target[column]
+    if not target_rows.empty:
+        for column, relationship_type in relationship_columns.items():
+            value = target[column]
 
-        if pd.isna(value) or recent_returns.empty:
-            velocity[relationship_type] = 0
-            continue
+            if pd.isna(value) or recent_returns.empty:
+                velocity[relationship_type] = 0
+                continue
 
-        velocity[relationship_type] = int(
-            (
-                recent_returns[column] == value
-            ).sum()
+            velocity[relationship_type] = int(
+                (
+                    recent_returns[column] == value
+                ).sum()
+            )
+
+    if fallback_data:
+        cluster_velocity = int(
+            fallback_data.get("cluster_return_velocity_7d", 0) or 0
+        )
+    else:
+        cluster_velocity = max(
+            velocity.values(),
+            default=0,
         )
 
-    cluster_velocity = max(velocity.values(), default=0)
+    if fallback_data:
+        shared_counts = {
+            "DEVICE": int(
+                fallback_data.get("shared_device_count", 0) or 0
+            ),
+            "ADDRESS": int(
+                fallback_data.get("shared_address_count", 0) or 0
+            ),
+            "PAYMENT": int(
+                fallback_data.get(
+                    "shared_payment_fingerprint_count", 0
+                ) or 0
+            ),
+        }
 
-    # Network counts.
-    shared_counts = {
-        "DEVICE": int(
-            users.loc[
-                users["device_fingerprint"]
-                == target["device_fingerprint"],
-                "user_id",
-            ].nunique()
-        ),
-        "ADDRESS": int(
-            users.loc[
-                users["address_hash"]
-                == target["address_hash"],
-                "user_id",
-            ].nunique()
-        ),
-        "PAYMENT": int(
-            users.loc[
-                users["payment_fingerprint"]
-                == target["payment_fingerprint"],
-                "user_id",
-            ].nunique()
-        ),
-    }
+        velocity = {
+            "DEVICE": int(
+                fallback_data.get("device_return_velocity_7d", 0) or 0
+            ),
+            "ADDRESS": int(
+                fallback_data.get("address_return_velocity_7d", 0) or 0
+            ),
+            "PAYMENT": int(
+                fallback_data.get("payment_return_velocity_7d", 0) or 0
+            ),
+        }
+
+        infrastructure_evidence = []
+
+        evidence_config = [
+            ("DEVICE", "Shared device cluster", "shared_device_count"),
+            ("ADDRESS", "Shared address cluster", "shared_address_count"),
+            (
+                "PAYMENT",
+                "Shared payment cluster",
+                "shared_payment_fingerprint_count",
+            ),
+        ]
+
+        for relationship_type, label, field in evidence_config:
+            count = int(fallback_data.get(field, 0) or 0)
+
+            if count > 0:
+                infrastructure_evidence.append(
+                    {
+                        "type": relationship_type,
+                        "identifier": label,
+                        "account_count": count,
+                        "linked_users": [],
+                        "return_velocity_7d": velocity[
+                            relationship_type
+                        ],
+                    }
+                )
+
+    for evidence in infrastructure_evidence:
+        relationship_type = evidence["type"]
+
+        evidence["return_velocity_7d"] = velocity.get(
+            relationship_type,
+            0,
+        )
 
     return {
         "user_id": user_id,
@@ -237,4 +313,5 @@ def build_user_network(user_id: str) -> dict[str, Any]:
             "payment_return_velocity_7d": velocity["PAYMENT"],
             "cluster_return_velocity_7d": cluster_velocity,
         },
+        "infrastructure_evidence": infrastructure_evidence,
     }

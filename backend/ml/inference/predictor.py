@@ -286,11 +286,24 @@ class RiskGuardPredictor:
 
         frame = pd.DataFrame([data])
 
+        user_id = data.get("user_id")
+
+        if (
+            not isinstance(user_id, str)
+            or not user_id.strip()
+        ):
+            raise ValueError(
+                "Missing required inference field: user_id"
+            )
+
         excluded_columns = {
             self.target_column,
             "user_id",
             "return_id",
             "order_id",
+            "device_fingerprint",
+            "address_hash",
+            "payment_fingerprint",
         }
 
         frame = frame.drop(
@@ -532,10 +545,40 @@ class RiskGuardPredictor:
                 "High-value orders can increase return-abuse exposure."
             )
 
+        if feature == "item_value":
+            return (
+                "Higher item value increases the potential financial "
+                "exposure of an abusive return."
+            )
+
+        if feature == "quantity":
+            return (
+                "A larger returned quantity increases the amount of "
+                "merchandise involved in the return."
+            )
+
+        if feature == "refund_amount":
+            return (
+                "A higher refund amount increases the potential "
+                "financial exposure of the return."
+            )
+
+        if feature == "lifetime_order_count":
+            return (
+                "Lifetime order count provides context about the "
+                "customer's historical purchasing activity."
+            )
+
         if feature == "lifetime_return_count":
             return (
                 "High lifetime return activity can indicate repeated "
-                "return behavior."
+                "or serial return behavior."
+            )
+
+        if feature == "total_spent":
+            return (
+                "Total historical spend provides context about the "
+                "customer's overall purchasing relationship."
             )
 
         if feature == "returned_item_match":
@@ -560,10 +603,48 @@ class RiskGuardPredictor:
                 "High historical return rate is a strong abuse signal."
             )
 
+        if feature == "return_velocity_30d":
+            return (
+                "High return activity over 30 days may indicate "
+                "serial returning."
+            )
+
+        if feature == "return_velocity_48h":
+            return (
+                "Multiple returns within 48 hours may indicate an "
+                "unusually concentrated burst of return activity."
+            )
+
+        if feature == "shared_device_count":
+            return (
+                "Multiple user accounts are linked to the same device "
+                "fingerprint, which may indicate coordinated or linked "
+                "return activity."
+            )
+
+        if feature == "shared_address_count":
+            return (
+                "Multiple user accounts are linked to the same address, "
+                "which may indicate coordinated or linked return activity."
+            )
+
+        if feature == "shared_payment_fingerprint_count":
+            return (
+                "Multiple user accounts are linked to the same payment "
+                "fingerprint, which may indicate coordinated or linked "
+                "return activity."
+            )
+
         if feature == "device_return_velocity_7d":
             return (
                 "Multiple returns from the same device within seven "
                 "days may indicate linked abuse."
+            )
+
+        if feature == "address_return_velocity_7d":
+            return (
+                "High return activity associated with the same address "
+                "may indicate linked accounts."
             )
 
         if feature == "payment_return_velocity_7d":
@@ -572,22 +653,10 @@ class RiskGuardPredictor:
                 "fingerprint may indicate coordinated abuse."
             )
 
-        if feature == "return_velocity_30d":
-            return (
-                "High return activity over 30 days may indicate "
-                "serial returning."
-            )
-
         if feature == "cluster_return_velocity_7d":
             return (
                 "High return activity across linked accounts may "
                 "indicate an abuse ring."
-            )
-
-        if feature == "address_return_velocity_7d":
-            return (
-                "High return activity associated with the same "
-                "address may indicate linked accounts."
             )
 
         if feature == "account_age_days":
@@ -606,13 +675,36 @@ class RiskGuardPredictor:
                 "which is less consistent with a very new account."
             )
 
-        if feature == "shared_address_count":
+        if feature == "order_category":
             return (
-                "Multiple accounts sharing an address may indicate "
-                "account linkage."
+                "The order category provides product context for "
+                "the return-risk assessment."
             )
 
-        return f"Feature {feature} contributed to the model decision."
+        if feature == "return_reason":
+            return (
+                "The stated return reason provides behavioral context "
+                "for evaluating the return."
+            )
+
+        if feature.startswith("order_category_"):
+            category = feature[len("order_category_"):].replace("_", " ")
+            return (
+                f"The order belongs to the {category} category, "
+                "which provides product context for the risk assessment."
+            )
+
+        if feature.startswith("return_reason_"):
+            reason = feature[len("return_reason_"):].replace("_", " ")
+            return (
+                f"The stated return reason is '{reason}', "
+                "which provides behavioral context for the risk assessment."
+            )
+
+        return (
+            "This model signal provides additional behavioral or "
+            "transaction context for the risk assessment."
+        )
 
     # ----------------------------------------------------------
     # Explainability — native XGBoost TreeSHAP (preferred)

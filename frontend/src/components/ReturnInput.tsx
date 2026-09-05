@@ -347,15 +347,19 @@ function ReturnInput({
     <div className="panel input-panel">
       <div className="panel-header">
         <div>
+          <span className="panel-kicker">
+            RETURN SCREENING
+          </span>
+
           <h3>
             {mode === 'single'
-              ? 'Return Data'
+              ? 'Return Assessment'
               : 'Bulk Return Data'}
           </h3>
 
           <p>
             {mode === 'single'
-              ? 'Enter one feature payload for assessment.'
+              ? 'Provide the return details below to evaluate transaction risk.'
               : 'Upload a CSV containing return records.'}
           </p>
         </div>
@@ -386,107 +390,123 @@ function ReturnInput({
           </div>
 
           {singleInputMode === 'form' && (
-            <div className="return-form">
-              {FIELD_GROUPS.map((group) => (
-                <div
-                  className="return-form-group"
-                  key={group.title}
-                >
-                  <h4>{group.title}</h4>
+            <>
+              <div className="assessment-intro">
+                <div className="assessment-intro-icon">
+                  ✓
+                </div>
 
-                  <div className="return-form-grid">
-                    {group.fields.map((field) => (
-                      <div className="field" key={field.key}>
-                        <label htmlFor={field.key}>
-                          {field.label}
-                        </label>
+                <div>
+                  <strong>Guided assessment</strong>
+                  <span>
+                    Complete the return information below. RiskGuard will
+                    evaluate transaction, customer, and network signals.
+                  </span>
+                </div>
+              </div>
 
-                        {field.type === 'select' && (
-                          <select
-                            id={field.key}
-                            className="field-input"
-                            value={
-                              (fields[field.key] as string) ??
-                              field.options[0]
-                            }
-                            onChange={(event) =>
-                              updateField(
-                                field.key,
-                                event.target.value,
-                              )
-                            }
-                          >
-                            {field.options.map((option) => (
-                              <option
-                                key={option}
-                                value={option}
-                              >
-                                {option}
-                              </option>
-                            ))}
-                          </select>
-                        )}
+              <div className="return-form">
+                {FIELD_GROUPS.map((group) => (
+                  <div
+                    className="return-form-group"
+                    key={group.title}
+                  >
+                    <h4>{group.title}</h4>
 
-                        {field.type === 'number' && (
-                          <input
-                            id={field.key}
-                            className="field-input"
-                            type="number"
-                            step={field.step ?? 1}
-                            min={field.min}
-                            max={field.max}
-                            value={
-                              typeof fields[field.key] ===
-                              'number'
-                                ? (fields[field.key] as number)
-                                : ''
-                            }
-                            onChange={(
-                              event: ChangeEvent<HTMLInputElement>,
-                            ) => {
-                              const raw = event.target.value
-                              updateField(
-                                field.key,
-                                raw === ''
-                                  ? 0
-                                  : Number(raw),
-                              )
-                            }}
-                          />
-                        )}
+                    <div className="return-form-grid">
+                      {group.fields.map((field) => (
+                        <div className="field" key={field.key}>
+                          <label htmlFor={field.key}>
+                            {field.label}
+                          </label>
 
-                        {field.type === 'boolean' && (
-                          <label className="field-checkbox">
-                            <input
+                          {field.type === 'select' && (
+                            <select
                               id={field.key}
-                              type="checkbox"
-                              checked={Boolean(
-                                fields[field.key],
-                              )}
+                              className="field-input"
+                              value={
+                                (fields[field.key] as string) ??
+                                field.options[0]
+                              }
                               onChange={(event) =>
                                 updateField(
                                   field.key,
-                                  event.target.checked,
+                                  event.target.value,
                                 )
                               }
-                            />
-                            <span>
-                              {fields[field.key]
-                                ? 'Yes'
-                                : 'No'}
-                            </span>
-                          </label>
-                        )}
+                            >
+                              {field.options.map((option) => (
+                                <option
+                                  key={option}
+                                  value={option}
+                                >
+                                  {option}
+                                </option>
+                              ))}
+                            </select>
+                          )}
 
-                        <span className="field-help">
-                          {field.help}
-                        </span>
-                      </div>
-                    ))}
+                          {field.type === 'number' && (
+                            <input
+                              id={field.key}
+                              className="field-input"
+                              type="number"
+                              step={field.step ?? 1}
+                              min={field.min}
+                              max={field.max}
+                              value={
+                                typeof fields[field.key] ===
+                                'number'
+                                  ? (fields[field.key] as number)
+                                  : ''
+                              }
+                              onChange={(
+                                event: ChangeEvent<HTMLInputElement>,
+                              ) => {
+                                const raw = event.target.value
+                                updateField(
+                                  field.key,
+                                  raw === ''
+                                    ? 0
+                                    : Number(raw),
+                                )
+                              }}
+                            />
+                          )}
+
+                          {field.type === 'boolean' && (
+                            <label className="field-checkbox">
+                              <input
+                                id={field.key}
+                                type="checkbox"
+                                checked={Boolean(
+                                  fields[field.key],
+                                )}
+                                onChange={(event) =>
+                                  updateField(
+                                    field.key,
+                                    event.target.checked,
+                                  )
+                                }
+                              />
+                              <span>
+                                {fields[field.key]
+                                  ? 'Yes'
+                                  : 'No'}
+                              </span>
+                            </label>
+                          )}
+
+                          <span className="field-help">
+                            {field.help}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+          </>
           )}
 
           {singleInputMode === 'json' && (
@@ -501,14 +521,20 @@ function ReturnInput({
           )}
 
           <button
-            className="analyze-button"
+            className="analyze-button single-analyze-button"
             type="button"
             onClick={handleAnalyze}
             disabled={loading}
           >
-            {loading
-              ? 'Analyzing...'
-              : 'Analyze Return Risk'}
+            <span className="analyze-button-icon">
+              {loading ? '…' : '→'}
+            </span>
+
+            <span>
+              {loading
+                ? 'Analyzing return...'
+                : 'Analyze Return Risk'}
+            </span>
           </button>
         </>
       )}

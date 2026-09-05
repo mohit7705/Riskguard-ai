@@ -61,12 +61,21 @@ export type NetworkSummary = {
   payment_return_velocity_7d: number
   cluster_return_velocity_7d: number
 }
+export type InfrastructureEvidence = {
+  type: 'DEVICE' | 'ADDRESS' | 'PAYMENT'
+  identifier: string
+  account_count: number
+  linked_users: string[]
+  return_velocity_7d: number
+}
+
 
 export type UserNetwork = {
   user_id: string
   nodes: NetworkNode[]
   edges: NetworkEdge[]
   network_summary: NetworkSummary
+  infrastructure_evidence: InfrastructureEvidence[]
 }
 
 export type ReviewCaseListResponse = {

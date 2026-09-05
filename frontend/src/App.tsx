@@ -50,6 +50,7 @@ const REQUIRED_COLUMNS = [
 ]
 
 const sampleSingleData = `{
+  "user_id": "U000001",
   "order_category": "Electronics",
   "order_value": 509.83,
   "item_value": 55.82,
@@ -99,16 +100,16 @@ function App() {
 
   const [assignmentNumber, setAssignmentNumber] = useState('')
   const [networkUserId, setNetworkUserId] = useState('U000001')
+  const [networkCaseId, setNetworkCaseId] = useState<string | null>(null)
   const [network, setNetwork] = useState<UserNetwork | null>(null)
   const [networkLoading, setNetworkLoading] = useState(false)
   const [networkError, setNetworkError] = useState('')
 
-  const handleNetworkAnalysis = async () => {
-    const userId = networkUserId.trim()
+  const handleNetworkAnalysis = async (userIdOverride?: string) => {
+    const userId = userIdOverride?.trim() || networkUserId.trim()
 
     if (!userId) {
-      setNetworkError('Please enter a user ID.')
-      setNetwork(null)
+      setNetworkError('Enter a user ID')
       return
     }
 
@@ -116,14 +117,18 @@ function App() {
     setNetworkError('')
 
     try {
-      const response = await getUserNetwork(userId, assignmentNumber)
-      setNetwork(response)
-    } catch (err) {
+      const result = await getUserNetwork(
+        userId,
+        assignmentNumber,
+      )
+      setNetwork(result)
+      setNetworkUserId(userId)
+    } catch (error) {
       setNetwork(null)
       setNetworkError(
-        err instanceof Error
-          ? err.message
-          : 'Unable to load user network.',
+        error instanceof Error
+          ? error.message
+          : 'Failed to load network analysis',
       )
     } finally {
       setNetworkLoading(false)
@@ -447,7 +452,16 @@ function App() {
         )}
 
         {activePage === 'review' && (
-          <ReviewAnalysis assignmentNumber={assignmentNumber} filter={reviewFilter} />
+          <ReviewAnalysis
+            assignmentNumber={assignmentNumber}
+            filter={reviewFilter}
+            onInvestigateNetwork={(caseId, userId) => {
+              setNetworkCaseId(caseId)
+              setNetworkUserId(userId)
+              setActivePage('network')
+              handleNetworkAnalysis(userId)
+              }}
+          />
         )}
 
         {activePage === 'single' && (
@@ -466,7 +480,7 @@ function App() {
               </div>
             </header>
 
-            <section className="workspace">
+            <section className="single-assessment-workspace">
               <ReturnInput
                 mode="single"
                 batchInputMode={batchInputMode}
@@ -537,7 +551,7 @@ function App() {
               </div>
             </header>
 
-            <section className="workspace">
+            <section className="bulk-assessment-workspace">
               <ReturnInput
                 mode="batch"
                 batchInputMode={batchInputMode}
@@ -612,6 +626,42 @@ function App() {
               </div>
             </header>
 
+            {networkCaseId && (
+              <div
+                style={{
+                  marginBottom: '16px',
+                  padding: '12px 16px',
+                  border: '1px solid #e2e5ea',
+                  borderRadius: '8px',
+                  background: '#f8f9fb',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    color: '#7a8494',
+                    marginBottom: '4px',
+                  }}
+                >
+                  INVESTIGATING REVIEW CASE
+                </div>
+
+                <strong>{networkCaseId}</strong>
+
+                <div
+                  style={{
+                    marginTop: '4px',
+                    fontSize: '13px',
+                    color: '#5b6472',
+                  }}
+                >
+                  Target user: {networkUserId}
+                </div>
+              </div>
+            )}
+
             <section className="network-panel panel">
                 <div className="panel-header">
                   <div>
@@ -635,7 +685,7 @@ function App() {
 
                   <button
                     type="button"
-                    onClick={handleNetworkAnalysis}
+                    onClick={() => handleNetworkAnalysis()}
                     disabled={networkLoading}
                   >
                     {networkLoading

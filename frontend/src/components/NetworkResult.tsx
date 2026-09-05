@@ -9,17 +9,14 @@ function NetworkResult({
     (node) => node.type === 'USER' && !node.is_target,
   ).length
 
-  const deviceCount = network.nodes.filter(
-    (node) => node.type === 'DEVICE',
-  ).length
+  const deviceCount =
+    network.network_summary.shared_device_count
 
-  const addressCount = network.nodes.filter(
-    (node) => node.type === 'ADDRESS',
-  ).length
+  const addressCount =
+    network.network_summary.shared_address_count
 
-  const paymentCount = network.nodes.filter(
-    (node) => node.type === 'PAYMENT',
-  ).length
+  const paymentCount =
+    network.network_summary.shared_payment_fingerprint_count
 
   return (
     <div className="network-result">
@@ -78,7 +75,57 @@ function NetworkResult({
           </div>
         </div>
       </div>
+       <div className="network-evidence">
+  <h4>Network Evidence</h4>
 
+  {network.infrastructure_evidence.length === 0 ? (
+    <p className="network-empty">
+      No shared infrastructure evidence found.
+    </p>
+  ) : (
+    network.infrastructure_evidence.map((evidence) => (
+      <div
+        className="network-evidence-card"
+        key={`${evidence.type}-${evidence.identifier}`}
+      >
+        <div className="network-evidence-header">
+          <span>{evidence.type}</span>
+          <strong>{evidence.identifier}</strong>
+        </div>
+
+        <div className="network-evidence-details">
+          <span>
+            {evidence.account_count} account
+            {evidence.account_count !== 1 ? 's' : ''} connected
+          </span>
+
+          {evidence.return_velocity_7d > 0 && (
+            <span>
+              {evidence.return_velocity_7d} returns in 7d
+            </span>
+          )}
+        </div>
+
+        {evidence.linked_users.length > 0 && (
+          <div className="network-linked-users">
+            <small>LINKED ACCOUNTS</small>
+
+            <div>
+              {evidence.linked_users.map((userId) => (
+                <span
+                  className="network-linked-user"
+                  key={userId}
+                >
+                  {userId}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    ))
+          )}
+      </div>
       <div className="network-connections">
         <h4>Connected Accounts</h4>
 

@@ -2703,123 +2703,1900 @@ select.field-input {
   font-size: 13px;
   line-height: 1.5;
 }
-/* Assignment entry / welcome screen */
+/* =========================================================
+   ASSIGNMENT ENTRY — split panel
+   ========================================================= */
 
 .entry-shell {
   min-height: 100vh;
+
   display: grid;
   place-items: center;
+
   padding: 32px;
+
   background: var(--bg);
 }
 
-.entry-card {
-  width: min(520px, 100%);
-  padding: 40px;
+.entry-frame {
+  width: min(920px, 100%);
+
+  display: grid;
+  grid-template-columns: minmax(0, 380px) minmax(0, 1fr);
+
+  border-radius: 20px;
+  overflow: hidden;
+
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  box-shadow: 0 20px 60px rgba(24, 39, 75, 0.08);
+
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.14);
 }
 
-.entry-brand {
+/* ---------------------------------------------------------
+   BRAND PANEL (left, dark)
+   --------------------------------------------------------- */
+
+.entry-brand-panel {
+  position: relative;
+
+  display: flex;
+  flex-direction: column;
+
+  padding: 44px 36px;
+
+  background: linear-gradient(160deg, #16243b, #263a58 65%, #334966);
+
+  color: #ffffff;
+
+  overflow: hidden;
+}
+
+.entry-graph {
+  position: absolute;
+  right: -60px;
+  bottom: -40px;
+
+  width: 340px;
+  height: 340px;
+
+  pointer-events: none;
+}
+
+.entry-brand-panel-top {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 42px;
+  gap: 13px;
+
+  z-index: 1;
 }
 
-.entry-brand .brand-mark {
-  width: 42px;
-  height: 42px;
+.entry-brand-mark {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+
   display: grid;
   place-items: center;
-  border-radius: 11px;
-  font-size: 21px;
+
+  border-radius: 13px;
+
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+
+  color: #ffffff;
+
+  font-size: 19px;
   font-weight: 800;
 }
 
-.entry-brand h1 {
+.entry-brand-panel-top h1 {
   margin: 0;
-  font-size: 18px;
+
+  font-size: 17px;
+  font-weight: 800;
+
+  letter-spacing: -0.02em;
 }
 
-.entry-brand span {
+.entry-brand-panel-top span {
   display: block;
+
   margin-top: 3px;
-  color: var(--text-muted);
-  font-size: 12px;
+
+  color: rgba(255, 255, 255, 0.6);
+
+  font-size: 11px;
+  font-weight: 700;
+
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.entry-brand-tagline {
+  max-width: 260px;
+
+  margin: 40px 0 0;
+
+  color: rgba(255, 255, 255, 0.82);
+
+  font-size: 17px;
+  line-height: 1.55;
+  font-weight: 500;
+
+  letter-spacing: -0.005em;
+
+  z-index: 1;
+}
+
+.entry-steps {
+  display: flex;
+  gap: 7px;
+
+  margin-top: auto;
+  padding-top: 40px;
+
+  z-index: 1;
+}
+
+.entry-steps span {
+  width: 22px;
+  height: 3px;
+
+  border-radius: 999px;
+
+  background: rgba(255, 255, 255, 0.22);
+
+  transition: background 0.2s ease, width 0.2s ease;
+}
+
+.entry-steps span.active {
+  width: 30px;
+  background: #ffffff;
+}
+
+.entry-steps span.done {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+/* ---------------------------------------------------------
+   FORM PANEL (right, light)
+   --------------------------------------------------------- */
+
+.entry-form-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  padding: 48px 44px;
 }
 
 .entry-heading h2 {
-  margin: 7px 0 8px;
+  margin: 0 0 8px;
+
   color: var(--text);
-  font-size: 28px;
+
+  font-size: 26px;
+  font-weight: 800;
+
+  letter-spacing: -0.02em;
 }
 
-.entry-heading p:not(.eyebrow) {
+.entry-heading p {
   margin: 0;
+
+  max-width: 340px;
+
   color: var(--text-muted);
-  line-height: 1.6;
+
+  font-size: 14.5px;
+  line-height: 1.55;
 }
 
 .entry-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 9px;
+
   margin-top: 28px;
 }
 
 .entry-form label {
   color: var(--text);
+
   font-size: 13px;
   font-weight: 700;
 }
 
-.entry-form input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 13px 14px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: var(--surface);
+.entry-form label:not(:first-child) {
+  margin-top: 10px;
+}
+
+.entry-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 0 14px;
+
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+
+  background: #fbfcfe;
+
+  color: #8a94a6;
+
+  transition: border-color 0.15s ease, box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.entry-field:focus-within {
+  border-color: #8fa0b5;
+  background: #ffffff;
+
+  box-shadow: 0 0 0 4px rgba(58, 79, 108, 0.07);
+}
+
+.entry-field input {
+  flex: 1;
+  min-width: 0;
+
+  padding: 13px 0;
+  border: 0;
+
+  background: transparent;
+
   color: var(--text);
+
   font: inherit;
+  font-size: 15px;
+
   outline: none;
 }
 
-.entry-form input:focus {
-  border-color: #7ca5df;
-  box-shadow: 0 0 0 3px rgba(43, 95, 176, 0.08);
-}
+.entry-form button.entry-primary {
+  margin-top: 10px;
 
-.entry-form button {
-  margin-top: 8px;
-  padding: 13px 16px;
+  height: 48px;
+
   border: 0;
-  border-radius: 9px;
-  background: var(--text);
-  color: white;
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
+  border-radius: 10px;
+
+  background: var(--navy);
+
+  color: #ffffff;
+
+  font-size: 14.5px;
+  font-weight: 750;
+
+  transition: background 0.15s ease, transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
-.entry-form button:disabled {
+.entry-form button.entry-primary:hover:not(:disabled) {
+  background: var(--navy-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(24, 38, 61, 0.16);
+}
+
+.entry-form button.entry-primary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
 .entry-secondary {
-  background: transparent !important;
-  color: var(--text-muted) !important;
-  border: 1px solid var(--border) !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  align-self: flex-start;
+
+  margin-top: 6px;
+  padding: 4px 2px;
+
+  border: 0;
+  background: transparent;
+
+  color: var(--text-muted);
+
+  font-size: 13px;
+  font-weight: 700;
+
+  transition: color 0.15s ease;
+}
+
+.entry-secondary:hover {
+  color: var(--text);
 }
 
 .entry-error {
   padding: 10px 12px;
+
+  border: 1px solid #f0caca;
   border-radius: 8px;
+
   background: var(--red-bg);
+
   color: var(--red);
+
   font-size: 13px;
+}
+
+/* ---------------------------------------------------------
+   RESPONSIVE
+   --------------------------------------------------------- */
+
+@media (max-width: 760px) {
+  .entry-shell {
+    padding: 0;
+  }
+
+  .entry-frame {
+    grid-template-columns: 1fr;
+
+    width: 100%;
+    min-height: 100vh;
+
+    border-radius: 0;
+  }
+
+  .entry-brand-panel {
+    padding: 32px 28px 28px;
+  }
+
+  .entry-graph {
+    width: 220px;
+    height: 220px;
+    right: -50px;
+    bottom: -60px;
+  }
+
+  .entry-brand-tagline {
+    margin-top: 22px;
+    max-width: none;
+  }
+
+  .entry-steps {
+    padding-top: 22px;
+  }
+
+  .entry-form-panel {
+    padding: 32px 28px 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entry-steps span,
+  .entry-form button.entry-primary,
+  .entry-field {
+    transition: none;
+  }
+}
+
+/* =========================================================
+   SINGLE ASSESSMENT — PREMIUM UI
+   Frontend presentation only.
+   Does not affect backend/API logic.
+   ========================================================= */
+
+.single-assessment-shell {
+  width: 100%;
+}
+
+.single-assessment-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(380px, 0.92fr);
+  gap: 24px;
+  align-items: start;
+}
+
+/* ---------------------------------------------------------
+   Assessment panels
+   --------------------------------------------------------- */
+
+.single-assessment-workspace .panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.045);
+  overflow: hidden;
+}
+
+.single-assessment-workspace .panel-header {
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid #edf1f5;
+}
+
+.single-assessment-workspace .panel-header h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.single-assessment-workspace .panel-header p {
+  margin: 5px 0 0;
+  color: #7b8798;
+  font-size: 13px;
+}
+
+/* ---------------------------------------------------------
+   Guided form
+   --------------------------------------------------------- */
+
+.single-assessment-workspace .return-form {
+  max-height: none;
+  padding: 22px 24px 24px;
+  overflow: visible;
+}
+
+.single-assessment-workspace .return-form-group {
+  margin-bottom: 28px;
+}
+
+.single-assessment-workspace .return-form-group h4 {
+  margin-bottom: 15px;
+  padding: 0;
+  border: 0;
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  color: #7b8798;
+}
+
+.single-assessment-workspace .return-form-grid {
+  gap: 15px;
+}
+
+.single-assessment-workspace .field {
+  gap: 7px;
+}
+
+.single-assessment-workspace .field label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.single-assessment-workspace .field-input {
+  height: 46px;
+  border-radius: 11px;
+  border-color: #d8e0e9;
+  background: #fafbfd;
+  font-size: 14px;
+}
+
+.single-assessment-workspace .field-input:hover {
+  border-color: #c4cfdb;
+}
+
+.single-assessment-workspace .field-input:focus {
+  border-color: #71839b;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(24, 38, 61, 0.06);
+}
+
+/* ---------------------------------------------------------
+   Result area
+   --------------------------------------------------------- */
+
+.single-assessment-workspace .result-panel {
+  min-height: 520px;
+}
+
+.single-assessment-workspace .result-content {
+  padding: 22px 24px 24px;
+}
+
+/* ---------------------------------------------------------
+   Risk summary
+   --------------------------------------------------------- */
+
+.single-assessment-workspace .risk-banner {
+  margin: 0 0 18px;
+  padding: 20px;
+  border-radius: 15px;
+}
+
+.single-assessment-workspace .risk-banner-main {
+  gap: 13px;
+}
+
+.single-assessment-workspace .risk-banner-main strong {
+  font-size: 21px;
+}
+
+.single-assessment-workspace .risk-score {
+  padding: 7px 10px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.single-assessment-workspace .risk-score strong {
+  font-size: 18px;
+}
+
+/* ---------------------------------------------------------
+   Metrics
+   --------------------------------------------------------- */
+
+.single-assessment-workspace .metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.single-assessment-workspace .metric {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #e5eaf0;
+  border-radius: 12px;
+  background: #fbfcfe;
+}
+
+.single-assessment-workspace .metric span {
+  display: block;
+  color: #7b8798;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.single-assessment-workspace .metric strong {
+  display: block;
+  margin-top: 5px;
+  color: #172033;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+/* ---------------------------------------------------------
+   Decision
+   --------------------------------------------------------- */
+
+.single-assessment-workspace .decision-card {
+  margin-bottom: 20px;
+  padding: 18px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border-color: #e3e8ee;
+}
+
+.single-assessment-workspace .decision-card-row {
+  padding: 7px 0;
+}
+
+.single-assessment-workspace .decision-card-row span {
+  font-size: 10px;
+  letter-spacing: 0.09em;
+}
+
+.single-assessment-workspace .decision-card-row strong {
+  margin-top: 3px;
+  font-size: 14px;
+}
+
+.single-assessment-workspace .decision-card p {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #e4e9ef;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* ---------------------------------------------------------
+   Risk signals
+   --------------------------------------------------------- */
+
+.single-assessment-workspace .signals {
+  margin: 0;
+  padding-top: 2px;
+}
+
+.single-assessment-workspace .signals-heading {
+  margin-bottom: 4px;
+}
+
+.single-assessment-workspace .signals-heading h3 {
+  font-size: 15px;
+}
+
+.single-assessment-workspace .signals-heading p {
+  margin-top: 3px;
+  font-size: 12px;
+}
+
+.single-assessment-workspace .signal {
+  padding: 11px 0;
+}
+
+.single-assessment-workspace .signal-main strong {
+  font-size: 13px;
+}
+
+.single-assessment-workspace .signal-main span {
+  font-size: 12px;
+}
+
+.single-assessment-workspace .signal-description {
+  font-size: 12px;
+}
+
+/* ---------------------------------------------------------
+   Model footer
+   --------------------------------------------------------- */
+
+.single-assessment-workspace .model-footer {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #edf1f5;
+  color: #9aa5b4;
+  font-size: 11px;
+}
+
+/* ---------------------------------------------------------
+   Responsive
+   --------------------------------------------------------- */
+
+@media (max-width: 1050px) {
+  .single-assessment-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .single-assessment-workspace .result-panel {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .single-assessment-workspace .return-form,
+  .single-assessment-workspace .result-content {
+    padding: 18px;
+  }
+
+  .single-assessment-workspace .return-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .single-assessment-workspace .metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .single-assessment-workspace .risk-banner {
+    align-items: flex-start;
+  }
+}
+
+/* =========================================================
+   SINGLE ASSESSMENT — INPUT POLISH
+   Presentation only. No API/backend changes.
+   ========================================================= */
+
+.single-assessment-workspace .panel-kicker {
+  display: block;
+  margin-bottom: 5px;
+  color: #94a0b1;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.single-assessment-workspace .assessment-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin: 0 24px;
+  padding: 13px 14px;
+  border: 1px solid #e7ebf0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.single-assessment-workspace .assessment-intro-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 25px;
+  width: 25px;
+  height: 25px;
+  border-radius: 7px;
+  background: #e8f5ed;
+  color: #247044;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.single-assessment-workspace .assessment-intro strong {
+  display: block;
+  margin-bottom: 2px;
+  color: #263247;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.single-assessment-workspace .assessment-intro span {
+  display: block;
+  color: #7b8798;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.single-assessment-workspace .single-analyze-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: calc(100% - 48px);
+  margin: 0 24px 24px;
+  min-height: 48px;
+  border-radius: 11px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.single-assessment-workspace .analyze-button-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.single-assessment-workspace .return-form-group {
+  position: relative;
+}
+
+.single-assessment-workspace .return-form-group h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.single-assessment-workspace .return-form-group h4::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #8b98a9;
+}
+
+.single-assessment-workspace .field-help {
+  line-height: 1.35;
+}
+
+/* =========================================================
+   SINGLE ASSESSMENT — RESULT PANEL
+   Presentation only.
+   ========================================================= */
+
+.single-assessment-workspace .single-result-content {
+  padding: 22px 24px 24px;
+}
+
+.single-assessment-workspace .risk-status-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.single-assessment-workspace .risk-status-subtitle {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: 0.72;
+}
+
+.single-assessment-workspace .risk-score {
+  min-width: 116px;
+  gap: 9px;
+}
+
+.single-assessment-workspace .risk-score > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.single-assessment-workspace .risk-score span {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+}
+
+.single-assessment-workspace .risk-score strong {
+  line-height: 1;
+}
+
+.single-assessment-workspace .result-section-label {
+  margin: 2px 0 9px;
+}
+
+.single-assessment-workspace .result-section-label span,
+.single-assessment-workspace .decision-heading > div > span {
+  color: #8a96a6;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.single-assessment-workspace .metrics {
+  margin-bottom: 22px;
+}
+
+.single-assessment-workspace .metric {
+  padding: 14px 15px;
+  min-height: 68px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.single-assessment-workspace .metric strong {
+  font-size: 15px;
+}
+
+.single-assessment-workspace .decision-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 9px;
+}
+
+.single-assessment-workspace .decision-heading h3 {
+  margin: 3px 0 0;
+  color: #253044;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.single-assessment-workspace .decision-heading > svg {
+  color: #6e7d91;
+}
+
+.single-assessment-workspace .decision-card {
+  padding: 8px 17px 17px;
+}
+
+.single-assessment-workspace .decision-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+}
+
+.single-assessment-workspace .decision-card-row > div {
+  min-width: 0;
+}
+
+.single-assessment-workspace .decision-card-row > svg {
+  flex: 0 0 auto;
+  color: #a0aab8;
+}
+
+.single-assessment-workspace .decision-card-row span {
+  display: block;
+}
+
+.single-assessment-workspace .decision-reason {
+  margin-top: 8px;
+  padding-top: 15px;
+  border-top: 1px solid #e4e9ef;
+}
+
+.single-assessment-workspace .decision-reason > span {
+  display: block;
+  margin-bottom: 7px;
+  color: #8a96a6;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.single-assessment-workspace .decision-reason p {
+  margin: 0;
+  color: #526174;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.single-assessment-workspace .signals-section {
+  margin-top: 22px;
+  padding-top: 1px;
+}
+
+.single-assessment-workspace .signals-section .signals-heading {
+  margin-bottom: 7px;
+}
+
+.single-assessment-workspace .signals-section .signals-heading h3 {
+  color: #253044;
+  font-size: 15px;
+}
+
+.single-assessment-workspace .signals-section .signals-heading p {
+  color: #8a96a6;
+}
+
+.single-assessment-workspace .model-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.single-assessment-workspace .model-footer span {
+  color: #a0aab8;
+}
+
+.single-assessment-workspace .model-footer strong {
+  color: #7b8798;
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .single-assessment-workspace .risk-banner {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .single-assessment-workspace .risk-score {
+    width: 100%;
+  }
+
+  .single-assessment-workspace .risk-status-subtitle {
+    max-width: 240px;
+  }
+}
+
+/* =========================================================
+   SINGLE ASSESSMENT — RISK SIGNALS
+   Presentation only.
+   ========================================================= */
+
+.single-assessment-workspace .signals-kicker {
+  display: block;
+  margin-bottom: 4px;
+  color: #9aa5b4;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+}
+
+.single-assessment-workspace .signals-heading h3 {
+  margin: 0;
+  color: #253044;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.single-assessment-workspace .signals-heading p {
+  margin: 4px 0 0;
+  color: #8a96a6;
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.single-assessment-workspace .signals-list {
+  margin-top: 12px;
+  border-top: 1px solid #edf1f5;
+}
+
+.single-assessment-workspace .signals-list .signal {
+  position: relative;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 16px;
+  gap: 10px;
+  align-items: start;
+  padding: 13px 0;
+  border-bottom: 1px solid #edf1f5;
+}
+
+.single-assessment-workspace .signal-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #f8f1f1;
+  color: #a65b5b;
+}
+
+.single-assessment-workspace .signal-positive .signal-indicator {
+  background: #eef7f1;
+  color: #4b8962;
+}
+
+.single-assessment-workspace .signal-body {
+  min-width: 0;
+}
+
+.single-assessment-workspace .signal-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.single-assessment-workspace .signal-main strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.single-assessment-workspace .signal-main span {
+  flex: 0 0 auto;
+  color: #59677a;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.single-assessment-workspace .signal-description {
+  margin-top: 3px;
+  color: #8995a5;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.single-assessment-workspace .importance {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.single-assessment-workspace .importance-track {
+  flex: 1;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf1f5;
+}
+
+.single-assessment-workspace .importance-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: #a65b5b;
+}
+
+.single-assessment-workspace .signal-positive .importance-bar {
+  background: #5d9a71;
+}
+
+.single-assessment-workspace .importance-label {
+  flex: 0 0 auto;
+  color: #a0aab8;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.single-assessment-workspace .signal-arrow {
+  margin-top: 7px;
+  color: #b0b8c3;
+}
+
+@media (max-width: 640px) {
+  .single-assessment-workspace .signals-list .signal {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .single-assessment-workspace .signal-arrow {
+    display: none;
+  }
+
+  .single-assessment-workspace .signal-main {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
+/* =========================================================
+   SINGLE ASSESSMENT — FINAL WORKSPACE REFINEMENT
+   UI only — no data/API/backend changes.
+   ========================================================= */
+
+.single-assessment-workspace {
+  align-items: start;
+}
+
+/* Keep the input side manageable */
+.single-assessment-workspace > .input-panel {
+  min-width: 0;
+}
+
+/* Result stays visible while entering a long assessment */
+.single-assessment-workspace > .result-panel {
+  position: sticky;
+  top: 20px;
+  min-width: 0;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+/* Slightly tighter form rhythm */
+.single-assessment-workspace .return-form {
+  padding-top: 18px;
+}
+
+.single-assessment-workspace .return-form-group {
+  margin-bottom: 23px;
+}
+
+.single-assessment-workspace .return-form-group h4 {
+  margin-bottom: 11px;
+}
+
+/* Compact fields */
+.single-assessment-workspace .field {
+  gap: 5px;
+}
+
+.single-assessment-workspace .field-input {
+  height: 43px;
+}
+
+.single-assessment-workspace .field-help {
+  font-size: 10px;
+  color: #9aa5b4;
+}
+
+/* Keep the introductory message subtle */
+.single-assessment-workspace .assessment-intro {
+  margin-top: 14px;
+  margin-bottom: 0;
+}
+
+/* Stronger visual separation between major form groups */
+.single-assessment-workspace .return-form-group + .return-form-group {
+  padding-top: 2px;
+}
+
+/* Make the main action easier to notice */
+.single-assessment-workspace .single-analyze-button {
+  position: sticky;
+  bottom: 14px;
+  z-index: 5;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.14);
+}
+
+/* Result panel scrollbar */
+.single-assessment-workspace > .result-panel::-webkit-scrollbar {
+  width: 5px;
+}
+
+.single-assessment-workspace > .result-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.single-assessment-workspace > .result-panel::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #d7dee7;
+}
+
+/* Give the result a little more breathing room */
+.single-assessment-workspace .signals-section {
+  padding-bottom: 2px;
+}
+
+@media (max-width: 1050px) {
+  .single-assessment-workspace > .result-panel {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .single-assessment-workspace .single-analyze-button {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .single-assessment-workspace .field-help {
+    font-size: 10.5px;
+  }
+}
+/* =========================================================
+   BULK ASSESSMENT — PREMIUM WORKSPACE
+   Presentation only — no backend/API changes.
+   ========================================================= */
+
+.bulk-assessment-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(520px, 1.1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.bulk-assessment-workspace > .panel {
+  min-width: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.045);
+  overflow: hidden;
+}
+
+.bulk-assessment-workspace .panel-header {
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid #edf1f5;
+}
+
+.bulk-assessment-workspace .panel-header h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.bulk-assessment-workspace .panel-header p {
+  margin: 5px 0 0;
+  color: #7b8798;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* -----------------------------
+   Bulk input
+   ----------------------------- */
+
+.bulk-assessment-workspace .bulk-input {
+  padding-bottom: 24px;
+}
+
+.bulk-assessment-workspace .batch-input-switch {
+  display: flex;
+  gap: 3px;
+  margin: 18px 24px 20px;
+  padding: 3px;
+  width: fit-content;
+  border: 1px solid #e3e8ee;
+  border-radius: 10px;
+  background: #f5f7fa;
+}
+
+.bulk-assessment-workspace .batch-input-switch button {
+  padding: 8px 13px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #7b8798;
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.bulk-assessment-workspace .batch-input-switch button.active {
+  background: #ffffff;
+  color: #24324a;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+}
+
+/* Upload area */
+
+.bulk-assessment-workspace .csv-dropzone {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 220px;
+  margin: 0 24px 16px;
+  padding: 30px 20px;
+  border: 1.5px dashed #cfd8e3;
+  border-radius: 15px;
+  background: #fafbfd;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.bulk-assessment-workspace .csv-dropzone:hover {
+  border-color: #9eacbd;
+  background: #f8fafc;
+  transform: translateY(-1px);
+}
+
+.bulk-assessment-workspace .csv-dropzone input {
+  display: none;
+}
+
+.bulk-assessment-workspace .upload-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 14px;
+  border: 1px solid #e0e6ed;
+  border-radius: 13px;
+  background: #ffffff;
+  color: #52647c;
+  font-size: 20px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+.bulk-assessment-workspace .csv-dropzone strong {
+  color: #263247;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.bulk-assessment-workspace .csv-dropzone span {
+  max-width: 280px;
+  margin-top: 6px;
+  color: #8b97a7;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.bulk-assessment-workspace .csv-info {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 24px 16px;
+  padding: 11px 13px;
+  border: 1px solid #e3e9ef;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.bulk-assessment-workspace .csv-info strong {
+  color: #25344d;
+  font-size: 13px;
+}
+
+.bulk-assessment-workspace .csv-info span {
+  color: #7b8798;
+  font-size: 11px;
+}
+
+/* Main bulk action */
+
+.bulk-assessment-workspace .analyze-button {
+  margin-left: 24px;
+  margin-right: 24px;
+  width: calc(100% - 48px);
+  min-height: 48px;
+  border-radius: 11px;
+}
+
+/* JSON mode */
+
+.bulk-assessment-workspace .bulk-input textarea {
+  min-height: 280px;
+  margin: 0 24px 16px;
+  width: calc(100% - 48px);
+  box-sizing: border-box;
+}
+
+/* -----------------------------
+   Bulk result
+   ----------------------------- */
+
+.bulk-assessment-workspace > .result-panel {
+  position: sticky;
+  top: 20px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+.bulk-result-content {
+  padding: 22px 24px 24px;
+}
+
+.bulk-result-intro {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.bulk-result-kicker {
+  display: block;
+  margin-bottom: 4px;
+  color: #98a3b2;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+}
+
+.bulk-result-intro h3 {
+  margin: 0;
+  color: #263247;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.bulk-result-intro p {
+  max-width: 470px;
+  margin: 5px 0 0;
+  color: #8793a3;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.bulk-completion-badge {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 6px;
+  padding: 7px 10px;
+  border: 1px solid #dce9e1;
+  border-radius: 8px;
+  background: #f3f9f5;
+  color: #4d8061;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+/* Summary cards */
+
+.bulk-assessment-workspace .batch-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  margin-bottom: 20px;
+}
+
+.bulk-assessment-workspace .batch-summary-card {
+  position: relative;
+  min-height: 78px;
+  padding: 12px 13px;
+  border: 1px solid #e5eaf0;
+  border-radius: 12px;
+  background: #fbfcfe;
+}
+
+.bulk-assessment-workspace .batch-summary-card span {
+  display: block;
+  color: #8490a0;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.bulk-assessment-workspace .batch-summary-card strong {
+  display: block;
+  margin-top: 6px;
+  color: #263247;
+  font-size: 21px;
+  font-weight: 800;
+}
+
+.bulk-assessment-workspace .batch-summary-card .batch-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 27px;
+  height: 27px;
+  margin-bottom: 9px;
+  border-radius: 8px;
+  background: #f0f3f7;
+  color: #64748b;
+}
+
+.bulk-assessment-workspace .batch-summary-card.total {
+  background: #f9fafc;
+}
+
+.bulk-assessment-workspace .batch-summary-card.legitimate {
+  background: #f7fbf8;
+  border-color: #e1eee5;
+}
+
+.bulk-assessment-workspace .batch-summary-card.abusive {
+  background: #fff9f9;
+  border-color: #f0e1e1;
+}
+
+.bulk-assessment-workspace .batch-summary-card.legitimate strong,
+.bulk-assessment-workspace .batch-summary-card.allow strong {
+  color: #43805a;
+}
+
+.bulk-assessment-workspace .batch-summary-card.abusive strong,
+.bulk-assessment-workspace .batch-summary-card.block strong {
+  color: #a35454;
+}
+
+.bulk-assessment-workspace .batch-summary-card.review strong {
+  color: #a47732;
+}
+
+/* Risk distribution */
+
+.bulk-risk-overview {
+  margin-bottom: 22px;
+  padding: 15px;
+  border: 1px solid #e5eaf0;
+  border-radius: 13px;
+  background: #fbfcfe;
+}
+
+.bulk-overview-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.bulk-overview-heading > div > span {
+  display: block;
+  margin-bottom: 3px;
+  color: #9aa5b4;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.bulk-overview-heading > div > strong {
+  color: #344257;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.bulk-overview-heading > strong {
+  color: #9b5b5b;
+  font-size: 11px;
+}
+
+.bulk-distribution {
+  display: flex;
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e9edf2;
+}
+
+.bulk-distribution-abusive {
+  min-width: 0;
+  background: #b86b6b;
+}
+
+.bulk-distribution-legitimate {
+  min-width: 0;
+  background: #79a889;
+}
+
+.bulk-distribution-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 9px;
+}
+
+.bulk-distribution-labels span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #8793a3;
+  font-size: 9.5px;
+  font-weight: 700;
+}
+
+.distribution-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.distribution-dot.abusive {
+  background: #b86b6b;
+}
+
+.distribution-dot.legitimate {
+  background: #79a889;
+}
+
+/* Table heading */
+
+.bulk-table-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+}
+
+.bulk-table-heading > div > span {
+  display: block;
+  margin-bottom: 3px;
+  color: #9aa5b4;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.bulk-table-heading h3 {
+  margin: 0;
+  color: #263247;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.bulk-table-count {
+  color: #98a3b2;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* Table */
+
+.bulk-assessment-workspace .batch-table-wrapper {
+  border: 1px solid #e5eaf0;
+  border-radius: 12px;
+  overflow: auto;
+}
+
+.bulk-assessment-workspace .batch-table {
+  width: 100%;
+  min-width: 650px;
+  border-collapse: collapse;
+}
+
+.bulk-assessment-workspace .batch-table th {
+  padding: 10px 11px;
+  background: #f8fafc;
+  color: #8a96a6;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.bulk-assessment-workspace .batch-table td {
+  padding: 11px;
+  border-top: 1px solid #edf1f5;
+  color: #536176;
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.bulk-assessment-workspace .batch-table tbody tr:hover {
+  background: #fafbfd;
+}
+
+.bulk-assessment-workspace .batch-index {
+  color: #a1aab7;
+  font-variant-numeric: tabular-nums;
+}
+
+.bulk-assessment-workspace .batch-prediction {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.bulk-assessment-workspace .batch-prediction.abusive {
+  color: #a35454;
+}
+
+.bulk-assessment-workspace .batch-prediction.legitimate {
+  color: #43805a;
+}
+
+.bulk-assessment-workspace .batch-score {
+  color: #344257;
+  font-size: 11px;
+}
+
+.bulk-assessment-workspace .batch-decision {
+  color: #344257;
+  font-weight: 750;
+}
+
+.bulk-assessment-workspace .batch-action {
+  color: #7b8798;
+}
+
+.bulk-assessment-workspace .table-note {
+  margin-top: 9px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #8a96a6;
+  font-size: 10px;
+}
+
+/* Scrollbar */
+
+.bulk-assessment-workspace > .result-panel::-webkit-scrollbar {
+  width: 5px;
+}
+
+.bulk-assessment-workspace > .result-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.bulk-assessment-workspace > .result-panel::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #d7dee7;
+}
+
+/* Responsive */
+
+@media (max-width: 1100px) {
+  .bulk-assessment-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .bulk-assessment-workspace > .result-panel {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 640px) {
+  .bulk-assessment-workspace .batch-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bulk-result-intro {
+    flex-direction: column;
+  }
+
+  .bulk-completion-badge {
+    width: fit-content;
+  }
+
+  .bulk-assessment-workspace .csv-dropzone {
+    min-height: 190px;
+  }
+}
+/* =========================================================
+   REVIEW ANALYSIS — search bar & pagination
+   Presentation only, replaces inline styles with the same
+   layout/behavior.
+   ========================================================= */
+
+.ra-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+
+  max-width: 360px;
+
+  margin: 4px 0 18px;
+  padding: 10px 14px;
+
+  border: 1px solid var(--border);
+  border-radius: 10px;
+
+  background: #fbfcfe;
+
+  transition: border-color 0.15s ease, background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.ra-search-bar:focus-within {
+  border-color: #8fa0b5;
+  background: #ffffff;
+
+  box-shadow: 0 0 0 4px rgba(58, 79, 108, 0.07);
+}
+
+.ra-search-icon {
+  flex: 0 0 auto;
+  color: #8a94a6;
+}
+
+.ra-search-input {
+  flex: 1;
+  min-width: 0;
+
+  border: none;
+  outline: none;
+
+  background: transparent;
+
+  color: var(--text);
+
+  font-size: 14px;
+}
+
+.ra-search-input::placeholder {
+  color: #9aa5b4;
+}
+
+.ra-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-top: 14px;
+  padding: 10px 12px;
+
+  border: 1px solid var(--border);
+  border-radius: 10px;
+
+  background: var(--surface-soft);
+}
+
+.ra-pagination-count {
+  color: var(--text-muted);
+
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.ra-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ra-page-indicator {
+  color: var(--text-soft);
+
+  font-size: 12.5px;
+  font-weight: 700;
+
+  white-space: nowrap;
+}
+
+.ra-page-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 30px;
+  height: 30px;
+
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+
+  background: #ffffff;
+
+  color: var(--text);
+
+  transition: background 0.15s ease, border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.ra-page-button:hover:not(:disabled) {
+  background: #f7f9fb;
+  border-color: #9eb0c4;
+  transform: translateY(-1px);
+}
+
+.ra-page-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ra-investigate-row {
+  display: flex;
+  justify-content: flex-end;
+
+  margin-top: 12px;
+}
+
+.ra-record-type-card {
+  margin-top: 12px;
 }

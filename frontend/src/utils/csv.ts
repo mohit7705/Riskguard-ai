@@ -77,7 +77,7 @@ export function parseCsv(
     )
   }
 
-  const rows = lines.slice(1).map((line) => {
+  return lines.slice(1).map((line) => {
     const values = parseCsvLine(line)
     const row: Record<string, unknown> = {}
 
@@ -86,15 +86,5 @@ export function parseCsv(
     })
 
     return row
-  })
-
-  return rows.map((row) => {
-    const cleaned: Record<string, unknown> = {}
-
-    requiredColumns.forEach((column) => {
-      cleaned[column] = row[column]
-    })
-
-    return cleaned
   })
 }

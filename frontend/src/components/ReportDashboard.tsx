@@ -326,22 +326,40 @@ function ReportDashboard({
         </div>
       </div>
 
-      <div className="report-charts-wrap">
-        <ReportCharts
-          risk={report?.risk_distribution ?? {}}
-          trend={report?.decision_trend ?? []}
-          reasons={report?.top_risk_reasons ?? []}
-        />
-      </div>
+      <section className="dash-section">
+        <div className="section-heading">
+          <div>
+            <p className="section-eyebrow">ANALYTICS</p>
+            <h2>Risk Overview</h2>
+          </div>
+        </div>
+
+        <div className="report-charts-wrap">
+          <ReportCharts
+            risk={report?.risk_distribution ?? {}}
+            trend={report?.decision_trend ?? []}
+            reasons={report?.top_risk_reasons ?? []}
+          />
+        </div>
+      </section>
 
       <LiveMonitoring assignmentNumber={assignmentNumber} />
 
-      <ModelInsights
-        performance={report?.model_performance}
-        impact={report?.financial_impact}
-      />
+      <section className="dash-section">
+        <div className="section-heading">
+          <div>
+            <p className="section-eyebrow">MODEL EVALUATION</p>
+            <h2>Validation &amp; Financial Impact</h2>
+          </div>
+        </div>
 
-      <ThresholdCurve curve={report?.threshold_curve} />
+        <ModelInsights
+          performance={report?.model_performance}
+          impact={report?.financial_impact}
+        />
+
+        <ThresholdCurve curve={report?.threshold_curve} />
+      </section>
     </div>
   );
 }

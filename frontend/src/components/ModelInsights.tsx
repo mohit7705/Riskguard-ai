@@ -1,8 +1,8 @@
 import {
   Target,
   Percent,
-  BarChart3,
   Activity,
+  BarChart3,
   ShieldCheck,
   IndianRupee,
 } from "lucide-react";

@@ -13,16 +13,15 @@ import {
   getReviewAnalysis,
   getReviewCase,
   type FeedbackRecord,
-  type ReviewAnalysisFilter,
   type ReviewCase,
 } from '../api/risk'
 import './ReportDashboard.css'
 
 type ReviewAnalysisProps = {
   assignmentNumber: string
-  filter: ReviewAnalysisFilter
+  filter: 'all' | 'pending' | 'allowed' | 'blocked'
+  onInvestigateNetwork: (caseId: string, userId: string) => void
 }
-
 type DetailTab =
   | 'signals'
   | 'transaction'
@@ -43,6 +42,14 @@ type DataFieldDef = {
 }
 
 const PAGE_SIZE = 10
+
+const RING_COLOR_BY_LEVEL: Record<string, string> = {
+  CRITICAL: '#c74646',
+  HIGH: '#e07856',
+  MEDIUM: '#c8963e',
+  LOW: '#3f9c6d',
+  MINIMAL: '#3d6fb4',
+}
 
 const TRANSACTION_FIELDS: DataFieldDef[] = [
   { key: 'order_category', label: 'Order Category', format: 'text' },
@@ -214,6 +221,7 @@ function formatDateTime(iso: string | null): string {
 function ReviewAnalysis({
   assignmentNumber,
   filter,
+  onInvestigateNetwork,
 }: ReviewAnalysisProps) {
   const [records, setRecords] = useState<FeedbackRecord[]>([])
   const [selectedRecord, setSelectedRecord] =
@@ -451,6 +459,12 @@ function ReviewAnalysis({
   const hasSelectedRecord =
     Boolean(selectedRecord)
 
+  const ringColor = selectedPrediction
+    ? RING_COLOR_BY_LEVEL[
+        selectedPrediction.risk_level?.toUpperCase() ?? ''
+      ] ?? 'var(--red)'
+    : 'var(--red)'
+
   return (
     <section className="review-queue">
       <div className="panel-header">
@@ -482,22 +496,11 @@ function ReviewAnalysis({
         </button>
       </div>
 
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          margin: '4px 0 16px',
-          padding: '8px 12px',
-          border: '1px solid #e2e5ea',
-          borderRadius: '8px',
-          maxWidth: '360px',
-        }}
-      >
+      <div className="ra-search-bar">
         <Search
           size={16}
           strokeWidth={2}
-          color="#8a94a6"
+          className="ra-search-icon"
         />
 
         <input
@@ -507,13 +510,7 @@ function ReviewAnalysis({
             setSearchInput(event.target.value)
           }
           placeholder="Search by case ID..."
-          style={{
-            border: 'none',
-            outline: 'none',
-            width: '100%',
-            fontSize: '14px',
-            background: 'transparent',
-          }}
+          className="ra-search-input"
         />
       </div>
 
@@ -607,18 +604,8 @@ function ReviewAnalysis({
               })}
             </div>
 
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginTop: '12px',
-                padding: '8px 4px',
-                fontSize: '13px',
-                color: '#5b6472',
-              }}
-            >
-              <span>
+            <div className="ra-pagination">
+              <span className="ra-pagination-count">
                 {total === 0
                   ? '0 records'
                   : `Showing ${
@@ -629,41 +616,29 @@ function ReviewAnalysis({
                     )} of ${total}`}
               </span>
 
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
-              >
+              <div className="ra-pagination-controls">
                 <button
                   type="button"
-                  className="secondary-button"
+                  className="ra-page-button"
                   onClick={() =>
                     goToPage(page - 1)
                   }
                   disabled={!hasPrev || loading}
-                  style={{
-                    padding: '4px 8px',
-                  }}
                 >
                   <ChevronLeft size={14} />
                 </button>
 
-                <span>
+                <span className="ra-page-indicator">
                   Page {page} of {totalPages}
                 </span>
 
                 <button
                   type="button"
-                  className="secondary-button"
+                  className="ra-page-button"
                   onClick={() =>
                     goToPage(page + 1)
                   }
                   disabled={!hasNext || loading}
-                  style={{
-                    padding: '4px 8px',
-                  }}
                 >
                   <ChevronRight size={14} />
                 </button>
@@ -764,7 +739,7 @@ function ReviewAnalysis({
                         <div
                           className="score-ring"
                           style={{
-                            background: `conic-gradient(var(--red) ${selectedPrediction.risk_score}%, #eef1f5 0)`,
+                            background: `conic-gradient(${ringColor} ${selectedPrediction.risk_score}%, #eef1f5 0)`,
                           }}
                         >
                           <div className="score-ring-hole" />
@@ -817,13 +792,39 @@ function ReviewAnalysis({
                     </p>
                   </div>
 
+                  {selectedRecord?.case_id &&
+                    typeof selectedData.user_id === 'string' &&
+                    selectedData.user_id.trim() && (
+                      <div className="ra-investigate-row">
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={() => {
+                            const userId =
+                              String(
+                                selectedData.user_id,
+                              ).trim()
+
+                            if (
+                              !selectedRecord.case_id ||
+                              !userId
+                            ) {
+                              return
+                            }
+
+                            onInvestigateNetwork(
+                              selectedRecord.case_id,
+                              userId,
+                            )
+                          }}
+                        >
+                          Investigate Network
+                        </button>
+                      </div>
+                    )}
+
                   {!isLinkedCase && (
-                    <div
-                      className="decision-card"
-                      style={{
-                        marginTop: '12px',
-                      }}
-                    >
+                    <div className="decision-card ra-record-type-card">
                       <div className="decision-card-row">
                         <div>
                           <span>

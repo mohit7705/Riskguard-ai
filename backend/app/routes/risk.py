@@ -10,6 +10,7 @@ from fastapi import (
 from sqlalchemy.orm import Session
 
 from backend.app.db.database import get_db
+from backend.app.db.models import Assessment, RiskFeedback
 from backend.app.schemas.risk import (
     RiskPredictionRequest,
     RiskPredictionResponse,
@@ -49,11 +50,15 @@ from backend.app.services.monitoring import (
     get_feedback_record_by_case_id,
     calculate_monitoring_metrics,
 )
+from backend.app.services.identity import resolve_user_id
 from backend.app.services.network import build_user_network
 from backend.ml.decision.risk_decision import make_risk_decision
 from backend.ml.decision.unified_risk import build_unified_risk_result
 from backend.ml.inference.predictor import load_predictor
 from backend.ml.vision.gemini_vision import GeminiVisionService
+from backend.ml.data_understanding.llm_data_understanding import (
+    llm_data_understanding_service,
+)
 
 
 router = APIRouter(
@@ -135,7 +140,21 @@ def predict_risk(
         else:
             assessment_id = None
 
-        result = predictor.predict(request.data)
+        understanding = llm_data_understanding_service.understand(
+            request.data
+        )
+
+        data = {
+            **understanding["normalized_data"],
+            **understanding["identity"],
+        }
+
+        data["user_id"] = resolve_user_id(
+            data=data,
+            assignment_id=assignment.assignment_id,
+        )
+
+        result = predictor.predict(data)
 
         if assessment_id is None:
             assessment = create_assessment(
@@ -159,13 +178,13 @@ def predict_risk(
         result = attach_review_case(
             db=db,
             prediction=result,
-            data=request.data,
+            data=data,
         )
 
         save_prediction_feedback(
             db=db,
             prediction=result,
-            data=request.data,
+            data=data,
             assessment_id=assessment_id,
         )
 
@@ -242,7 +261,19 @@ def predict_risk_batch(
             assessment_id = assessment.assessment_id
 
         for data in request.data:
-            prediction = predictor.predict(data)
+            understanding = llm_data_understanding_service.understand(data)
+
+            model_data = {
+                **understanding["normalized_data"],
+                **understanding["identity"],
+            }
+
+            model_data["user_id"] = resolve_user_id(
+                data=model_data,
+                assignment_id=assignment.assignment_id,
+            )
+
+            prediction = predictor.predict(model_data)
 
             prediction["assessment_id"] = assessment_id
 
@@ -256,13 +287,13 @@ def predict_risk_batch(
             prediction = attach_review_case(
                 db=db,
                 prediction=prediction,
-                data=data,
+                data=model_data,
             )
 
             save_prediction_feedback(
                 db=db,
                 prediction=prediction,
-                data=data,
+                data=model_data,
                 assessment_id=assessment_id,
             )
 
@@ -723,9 +754,51 @@ def get_monitoring_metrics(
 )
 def get_user_network(
     user_id: str,
+    assignment_number: str = Query(...),
+    db: Session = Depends(get_db),
 ):
     try:
-        return build_user_network(user_id)
+        assignment = get_assignment_by_number(
+            db=db,
+            assignment_number=assignment_number,
+        )
+
+        if assignment is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Assignment not found: {assignment_number}",
+            )
+
+        # Verify that this user belongs to the selected assignment.
+        user_exists = (
+            db.query(RiskFeedback)
+            .join(
+                Assessment,
+                RiskFeedback.assessment_id == Assessment.assessment_id,
+            )
+            .filter(
+                Assessment.assignment_id == assignment.assignment_id,
+                RiskFeedback.input_data["user_id"].as_string() == user_id,
+            )
+            .first()
+        )
+
+        if user_exists is None:
+            raise HTTPException(
+                status_code=404,
+                detail=(
+                    f"User {user_id} not found in assignment "
+                    f"{assignment_number}"
+                ),
+            )
+
+        return build_user_network(
+            user_id=user_id,
+            fallback_data=user_exists.input_data,
+        )
+
+    except HTTPException:
+        raise
 
     except ValueError as exc:
         raise HTTPException(

@@ -22,6 +22,14 @@ type DataFieldDef = {
 
 const PAGE_SIZE = 10
 
+const RING_COLOR_BY_LEVEL: Record<string, string> = {
+  CRITICAL: '#c74646',
+  HIGH: '#e07856',
+  MEDIUM: '#c8963e',
+  LOW: '#3f9c6d',
+  MINIMAL: '#3d6fb4',
+}
+
 const TRANSACTION_FIELDS: DataFieldDef[] = [
   { key: 'order_category', label: 'Order Category', format: 'text' },
   { key: 'order_value', label: 'Order Value', format: 'currency' },
@@ -264,6 +272,12 @@ function ReviewQueue({
     }
   }
 
+  const ringColor = selectedCase
+    ? RING_COLOR_BY_LEVEL[
+        selectedCase.prediction.risk_level?.toUpperCase() ?? ''
+      ] ?? 'var(--red)'
+    : 'var(--red)'
+
   return (
     <section className="review-queue">
       <div className="panel-header">
@@ -289,32 +303,15 @@ function ReviewQueue({
         </button>
       </div>
 
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          margin: '4px 0 16px',
-          padding: '8px 12px',
-          border: '1px solid #e2e5ea',
-          borderRadius: '8px',
-          maxWidth: '360px',
-        }}
-      >
-        <Search size={16} strokeWidth={2} color="#8a94a6" />
+      <div className="ra-search-bar">
+        <Search size={16} strokeWidth={2} className="ra-search-icon" />
 
         <input
           type="text"
           value={searchInput}
           onChange={(event) => setSearchInput(event.target.value)}
           placeholder="Search by case ID (e.g. F7D3)..."
-          style={{
-            border: 'none',
-            outline: 'none',
-            width: '100%',
-            fontSize: '14px',
-            background: 'transparent',
-          }}
+          className="ra-search-input"
         />
       </div>
 
@@ -403,18 +400,8 @@ function ReviewQueue({
               ))}
             </div>
 
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginTop: '12px',
-                padding: '8px 4px',
-                fontSize: '13px',
-                color: '#5b6472',
-              }}
-            >
-              <span>
+            <div className="ra-pagination">
+              <span className="ra-pagination-count">
                 {total === 0
                   ? '0 cases'
                   : `Showing ${(page - 1) * PAGE_SIZE + 1}–${Math.min(
@@ -423,27 +410,25 @@ function ReviewQueue({
                     )} of ${total}`}
               </span>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="ra-pagination-controls">
                 <button
                   type="button"
-                  className="secondary-button"
+                  className="ra-page-button"
                   onClick={() => goToPage(page - 1)}
                   disabled={!hasPrev || loading}
-                  style={{ padding: '4px 8px' }}
                 >
                   <ChevronLeft size={14} />
                 </button>
 
-                <span>
+                <span className="ra-page-indicator">
                   Page {page} of {totalPages}
                 </span>
 
                 <button
                   type="button"
-                  className="secondary-button"
+                  className="ra-page-button"
                   onClick={() => goToPage(page + 1)}
                   disabled={!hasNext || loading}
-                  style={{ padding: '4px 8px' }}
                 >
                   <ChevronRight size={14} />
                 </button>
@@ -531,7 +516,7 @@ function ReviewQueue({
                       <div
                         className="score-ring"
                         style={{
-                          background: `conic-gradient(var(--red) ${selectedCase.prediction.risk_score}%, #eef1f5 0)`,
+                          background: `conic-gradient(${ringColor} ${selectedCase.prediction.risk_score}%, #eef1f5 0)`,
                         }}
                       >
                         <div className="score-ring-hole" />
