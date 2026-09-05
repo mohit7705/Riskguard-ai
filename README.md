@@ -99,6 +99,19 @@ Each return request is evaluated using behavioral, transactional, account, packa
 - Business decision and recommended action
 - Top contributing risk signals for this specific case
 
+### AI Data Understanding
+
+RiskGuard AI includes an LLM-based data-understanding layer for merchant-provided return data. It converts arbitrary input into structured fields that can be consumed by the existing risk pipeline while preserving recognized identity and infrastructure fields.
+
+The LLM is intentionally limited to data understanding and normalization. It does not calculate risk scores, make ALLOW / REVIEW / BLOCK decisions, or invent missing behavioral features. The machine-learning model and business decision layer remain responsible for risk prediction and operational decisions.
+
+### Automatic User Identity
+
+Merchant input does not require a `user_id` field. RiskGuard AI preserves an existing user identity when one is provided and otherwise generates a deterministic internal RiskGuard user ID from available customer or transaction identity signals.
+
+The generated identity is stored with the assessment data and reused by downstream review and network-analysis workflows. This allows merchants to submit return records without manually generating internal user IDs for every row.
+
+
 ### Business Decision Engine
 
 Predictions are translated into operational decisions:
@@ -355,6 +368,7 @@ RiskGuard AI/
 │   │   │   ├── features/
 │   │   │   ├── generators/
 │   │   │   └── validators/
+|   |   ├── data_understanding/
 │   │   ├── decision/
 │   │   ├── inference/
 │   │   ├── models/
@@ -374,8 +388,6 @@ RiskGuard AI/
 │   └── vite.config.ts
 │
 ├── data/
-├── notebooks/
-├── docs/
 ├── pyproject.toml
 ├── uv.lock
 ├── .gitignore
